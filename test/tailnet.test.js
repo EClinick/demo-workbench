@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { exists } from '../lib/common.js';
+import { fakeTailscale } from './helpers/process.js';
 import { createOutputServer, serve } from '../lib/serve.js';
 import { validateIdentity, directAddresses, assertFree, createMapping, stopMapping, verifyEndpoint, inspectTailnet, serveConfig, stopTailnet } from '../lib/tailnet.js';
 
@@ -24,10 +25,9 @@ async function fixture(t) {
   await fs.mkdir(path.join(root, 'public/media/v001'), { recursive: true });
   await fs.writeFile(path.join(root, 'public/media/v001/web.mp4'), Buffer.from('0123456789abcdef'));
   await fs.writeFile(path.join(root, 'private.txt'), 'not public');
-  const stateFile = path.join(root, 'ts-state.json'), command = path.join(root, 'tailscale.cjs');
+  const stateFile = path.join(root, 'ts-state.json');
   await fs.writeFile(stateFile, JSON.stringify({ status, config: existing, calls: [] }));
-  await fs.writeFile(command, `#!${process.execPath}
-const fs = require('node:fs');
+  const command = await fakeTailscale(t, path.join(root, 'tailscale.cjs'), `const fs = require('node:fs');
 const file = ${JSON.stringify(stateFile)};
 const s = JSON.parse(fs.readFileSync(file));
 const a = process.argv.slice(2);
@@ -54,7 +54,7 @@ else {
  fs.writeFileSync(file, JSON.stringify(s));
  if (s.failAfterApply && a.at(-1) !== 'off') process.exitCode = 1;
 }
-`, { mode: 0o755 });
+`);
   return { root, command, stateFile, info: { ...validateIdentity(status), command } };
 }
 async function mutate(file, fn) { const s = await parse(file); fn(s); await fs.writeFile(file, JSON.stringify(s)); }
@@ -292,6 +292,19 @@ test('output server accepts concrete tailnet Host/Origin only and preserves priv
   policy.hosts.add(`127.0.0.1:${port}`);
   await verifyEndpoint(`http://127.0.0.1:${port}/`, token, { windowsFromWSL: false });
   await assert.rejects(verifyEndpoint(`http://127.0.0.1:${port}/`, randomUUID(), { windowsFromWSL: false }), /did not return this demo/);
+});
+
+test('real WSL Windows curl bridge verifies only this loopback instance, without a Serve mutation', { skip: process.platform !== 'linux' || !/microsoft/i.test(os.release()) }, async t => {
+  const { root } = await fixture(t);
+  const token = randomUUID();
+  const policy = { hosts: new Set(), origins: new Set(), token };
+  const server = await createOutputServer(root, policy);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  policy.hosts.add(`127.0.0.1:${server.address().port}`);
+  await verifyEndpoint(url, token, { windowsFromWSL: true });
+  await assert.rejects(verifyEndpoint(url, randomUUID(), { windowsFromWSL: true }), /belongs to another service/);
 });
 
 test('generated CLI inherits explicit tailnet options; failures never mutate network config', { timeout: 30000 }, async t => {

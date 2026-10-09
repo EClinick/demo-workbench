@@ -1,4 +1,4 @@
-# demo-workbench · local v1
+# demo-workbench · local-first
 
 Create a demo folder and local Git repo once; let agents work on scenes instead of
 rebuilding the review website. A small Node CLI renders MP4s, preserves numbered
@@ -8,21 +8,34 @@ remote creation, agent service or public deployment.
 
 ## Quick start
 
-From this repository, with **Node >=18, npm, Git, FFmpeg and ffprobe** installed:
+With the [prerequisites](docs/installation.md#prerequisites) already installed,
+install once from any directory (the repository currently requires existing Git
+access):
 
 ```sh
-node bin/cli.js init /tmp/my-first-demo --duration 2
-cd /tmp/my-first-demo
+npm install --global --ignore-scripts --omit=dev --no-audit --no-fund 'git+https://github.com/EClinick/demo-workbench.git#main'
+demo-workbench --version
+demo-workbench doctor
+demo-workbench init ./my-first-demo --duration 2
+cd my-first-demo
 # Optional: start your ordinary Claude session yourself, then edit src/scene.js.
 npm run demo:render -- --note "First study"
 npm run demo:serve
 # Open http://127.0.0.1:4173. Ctrl-C stops the server.
 ```
 
+**Native Windows:** in PowerShell use `npm.cmd` and `demo-workbench.cmd` for
+the commands above (no execution-policy change). In cmd.exe use double quotes
+around the Git URL. macOS/Linux/WSL use the shell example as written. `main` is
+a moving branch; replace it with a reviewed full commit SHA to pin the install.
+No registry package or release tag is assumed. See [installation](docs/installation.md)
+for prerequisites, PATH/auth diagnostics, Windows examples, update/uninstall and
+offline artifacts. Nothing installs OS tools or logs in for you.
+
 With inputs (copies, never moves):
 
 ```sh
-node bin/cli.js init /tmp/reference-demo \
+demo-workbench init ./reference-demo \
   --reference /path/to/reference.mp4 --audio /path/to/soundtrack.mp3 \
   --title "My demo"
 ```
@@ -34,25 +47,14 @@ RGB JavaScript scene works immediately, is silent, and explicitly has no referen
 No Canvas/browser/native npm library is required for the starter. A simple custom
 renderer-to-H.264-MP4 contract allows richer frameworks later without gallery edits.
 
-### Optional local installation (no global settings or registry)
+### Independent generated projects
 
-From this repository:
-
-```sh
-install_dir=$(mktemp -d)
-npm pack --pack-destination "$install_dir"
-npm install --prefix "$install_dir" --offline --ignore-scripts --no-audit --no-fund \
-  "$install_dir/demo-workbench-0.1.0.tgz"
-"$install_dir/node_modules/.bin/demo-workbench" init /tmp/installed-demo
-```
-
-The command is locally installed at that exact path; this does **not** add it to
-PATH, publish to npm, use npx, or make a global installation. No registry package
-is advertised. Both direct and tarball invocation are exercised by `npm test`.
 The generated project vendors the runtime CLI/gallery and has a locked,
-zero-runtime-dependency package; deleting the initializer installation does not
-break rendering. Its CLI provides only render, compare, review, archive and serve;
-use the original standalone CLI to initialize another project.
+zero-runtime-dependency package; deleting or updating the initializer installation
+does not change existing demos or break rendering. Prefer its `npm run demo:*`
+scripts for recurring work, not a newer global runtime. New generated CLIs also
+support `--version` and read-only `doctor [--json] [--tailnet]`, but never `init`;
+use the standalone installed CLI to initialize another project.
 Project init checks prerequisites, runs offline `npm ci` and a one-frame renderer
 smoke test, and initializes Git `main` with **no commit and no remote**. It never
 changes global Git identity or Claude settings. When the caller has an effective
@@ -70,7 +72,7 @@ npm run demo:compare -- v001                    # verify/locate archived packet
 npm run demo:review -- v001 --file review.json  # explicit one-time review import
 npm run demo:serve -- --port 4173               # loopback, public output only
 npm run demo:serve -- --tailnet --port 4173     # explicit private MagicDNS URL
-npm run demo:archive -- v001 /tmp/v001-bundle    # NEW private evidence bundle
+npm run demo:archive -- v001 ../v001-bundle     # NEW private evidence bundle
 ```
 
 Render builds the comparison automatically when a reference exists. Full-quality
@@ -162,8 +164,16 @@ npm run check
 npm test
 ```
 
+The [hosted matrix](.github/workflows/test.yml) runs on real macOS/Linux/native
+Windows with Node 22/24, plus Linux Node 18. It also installs the exact Git source
+commit using the runner's existing short-lived read-only credential, never a
+credential in a URL. WSL and its Windows localhost bridge have a separate test;
+non-WSL runners explicitly skip that bridge test. No hosted check claims live
+second-device access. See actual CI results for observed platform outcomes.
+
 Tests create synthetic fixtures in isolated temporary directories and exercise:
-actual tarball installation; source-path independence; two reference aspect/FPS
+actual isolated-prefix tarball and Git installation, native command shims,
+version/aggregate read-only doctor, spaces/Unicode, upgrade/uninstall independence; source-path independence; two reference aspect/FPS
 classes (4:3 at 24000/1001 and 16:9 at 60); different source/output FPS; audio mux;
 new/pending/imported review states; two versions with stable old media and review
 hashes; failed/non-producing render isolation; archive/export; missing dependencies

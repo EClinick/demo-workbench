@@ -5,6 +5,17 @@ output, inspect the same reusable gallery. No dependency on the initializer's
 installation path and no npm runtime dependencies. Requires Node >=18, npm, Git,
 FFmpeg/ffprobe with libx264, AAC and drawtext. Nothing installs OS packages.
 `npm ci --offline --ignore-scripts` validates the supplied zero-dependency lockfile.
+Use the commands below on macOS, Linux, WSL or native Windows; in PowerShell,
+`npm.cmd` avoids execution-policy restrictions on npm's `.ps1` shim. No policy
+or PATH edits are made automatically. WSL uses Linux Node/npm and FFmpeg, not
+Windows npm in a Linux PATH.
+
+The initializer may be upgraded or uninstalled without changing this project's
+frozen runtime. `demo.json` records the generator version; `.workbench/package.json`
+records this runtime's version. Run `node .workbench/bin/cli.js --version` or
+`node .workbench/bin/cli.js doctor --json` for local diagnostics. Add `--tailnet`
+only to check existing Tailscale readiness; doctor never creates a route. Do not
+replace project-local scripts with a newer global CLI when reproducing evidence.
 
 ## Everyday commands
 
@@ -18,7 +29,7 @@ npm run demo:serve -- --tailnet          # explicit private MagicDNS access
 # After preparing a review, as described below:
 npm run demo:review -- v001 --file review.json
 npm run demo:render -- --note "Revise the transition"  # v002; v001 unchanged
-npm run demo:archive -- v001 /tmp/my-demo-v001-bundle # NEW external folder
+npm run demo:archive -- v001 ../my-demo-v001-bundle # NEW external folder
 ```
 
 `render` assigns the next number; optional `--version v001` asserts that number,
@@ -76,8 +87,13 @@ Audio is padded/trimmed to the configured duration. Without --audio, renders are
 
 Default: `node src/render.js OUTPUT.mp4 CONFIG.json`. Configure `renderer.command`
 and `renderer.args` (an argv array, no shell) with standalone `{output}` and
-`{config}` placeholders. It runs from the project root with
-`DEMO_RENDER_WORKERS=1`. Agents may use another installed/local renderer; list and
+`{config}` placeholders. Use an executable on PATH or an explicit path (for
+example, `./tools/renderer`). Executables retain native OS/shebang semantics;
+a `.js`, `.mjs` or `.cjs` suffix does not select Node. For portable JavaScript
+renderers, set `renderer.command` to `node` and put the script path in
+`renderer.args`. Native Windows `.cmd`/`.bat` renderers are not supported; use
+an executable or an explicit Node script instead. It runs from the project root
+with `DEMO_RENDER_WORKERS=1`. Agents may use another installed/local renderer; list and
 lock its own dependencies in package.json if needed. The workbench never installs
 new renderer dependencies silently.
 

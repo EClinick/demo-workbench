@@ -5,6 +5,9 @@ Edit `src/scene.js`, `src/render.js`, `assets/` and `demo.json`. The extracted g
 in `site/` and vendored CLI in `.workbench/` are stable infrastructure.
 
 1. Read README.md and demo.json. Agree on creative intent and a review budget.
+   Diagnose with `node .workbench/bin/cli.js doctor` if needed. Use this project's
+   local scripts, not a newer global initializer/runtime. On native Windows
+   PowerShell use `npm.cmd`; do not change execution policy or install OS tools.
 2. Edit ordinary scene code/assets; preserve input originals.
 3. `npm run demo:render -- --note "What changed"` creates the next immutable run,
    aligned reference packet (when a reference exists), and updates the SAME gallery.
