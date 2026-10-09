@@ -7,6 +7,8 @@ import http from 'node:http';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import { exists } from '../lib/common.js';
 import { createOutputServer, serve } from '../lib/serve.js';
 import { validateIdentity, directAddresses, assertFree, createMapping, stopMapping, verifyEndpoint, inspectTailnet, serveConfig, stopTailnet } from '../lib/tailnet.js';
 
@@ -29,6 +31,18 @@ const fs = require('node:fs');
 const file = ${JSON.stringify(stateFile)};
 const s = JSON.parse(fs.readFileSync(file));
 const a = process.argv.slice(2);
+if (s.pause && JSON.stringify(a) === JSON.stringify(s.pause.args)) {
+ let claimed = false;
+ try { fs.writeFileSync(s.pause.reached, 'ready', { flag: 'wx' }); claimed = true; }
+ catch (e) { if (e.code !== 'EEXIST') throw e; }
+ if (claimed) {
+  const deadline = Date.now() + 10000;
+  while (!fs.existsSync(s.pause.release)) {
+   if (Date.now() > deadline) throw new Error('Synthetic CLI barrier timed out');
+   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  }
+ }
+}
 if (a[0] === 'status') console.log(JSON.stringify(s.status));
 else if (a[0] === 'serve' && a[1] === 'status') console.log(JSON.stringify(s.config));
 else {
@@ -44,6 +58,20 @@ else {
   return { root, command, stateFile, info: { ...validateIdentity(status), command } };
 }
 async function mutate(file, fn) { const s = await parse(file); fn(s); await fs.writeFile(file, JSON.stringify(s)); }
+async function pauseCommand(root, stateFile, args) {
+  const reached = path.join(root, 'command-reached'), release = path.join(root, 'command-release');
+  await mutate(stateFile, s => { s.pause = { args, reached, release }; });
+  return {
+    reached: async () => {
+      const deadline = Date.now() + 5000;
+      while (!await exists(reached)) {
+        if (Date.now() > deadline) throw new Error('Synthetic CLI never reached the barrier');
+        await delay(10);
+      }
+    },
+    release: () => fs.writeFile(release, 'continue')
+  };
+}
 async function request(port, resource, headers = {}) {
   return new Promise((resolve, reject) => {
     http.get({ host: '127.0.0.1', port, path: resource, headers }, res => {
@@ -108,14 +136,96 @@ test('automatic cleanup cannot remove a replacement invocation mapping', async t
   await stopTailnet(root, info.command);
   assert.equal(await stopMapping(root, info, first.token), false);
   const second = await createMapping(root, info, 19427, 19429, randomUUID());
-  t.after(() => stopMapping(root, info, second.token));
-  const state = await parse(stateFile);
-  const record = await parse(path.join(root, '.workbench/tailnet.json'));
-  assert.equal(await stopMapping(root, info, first.token), false);
-  assert.deepEqual(await parse(stateFile), state);
-  assert.deepEqual(await parse(path.join(root, '.workbench/tailnet.json')), record);
-  assert.equal(await stopMapping(root, info, second.token), true);
-  assert.deepEqual((await parse(stateFile)).config, existing);
+  try {
+    const state = await parse(stateFile);
+    const record = await parse(path.join(root, '.workbench/tailnet.json'));
+    assert.equal(await stopMapping(root, info, first.token), false);
+    assert.deepEqual(await parse(stateFile), state);
+    assert.deepEqual(await parse(path.join(root, '.workbench/tailnet.json')), record);
+    assert.equal(await stopMapping(root, info, second.token), true);
+    assert.deepEqual((await parse(stateFile)).config, existing);
+  } finally { await stopMapping(root, info, second.token); }
+});
+
+test('overlapping automatic and explicit stops exclude lifecycle mutations until cleanup completes', async t => {
+  for (const winner of ['automatic', 'explicit']) {
+    await t.test(winner, async t => {
+      const { root, info, stateFile, command } = await fixture(t);
+      const first = await createMapping(root, info, 19437, 19438, randomUUID());
+      const barrier = await pauseCommand(root, stateFile, ['serve', 'status', '--json']);
+      const pending = winner === 'automatic' ? stopMapping(root, info, first.token) : stopTailnet(root, command);
+      pending.catch(() => {});
+      try {
+        await barrier.reached();
+        const state = await parse(stateFile);
+        const explicit = spawnSync(process.execPath, [path.join(repo, 'bin/cli.js'), 'serve', '--stop-tailnet', '--tailscale', command], { cwd: root, encoding: 'utf8', timeout: 12000 });
+        assert.notEqual(explicit.status, 0);
+        assert.match(explicit.stderr, /Project is locked/);
+        await assert.rejects(stopMapping(root, info, first.token), /Project is locked/);
+        await assert.rejects(createMapping(root, info, 19437, 19439, randomUUID()), /Project is locked/);
+        assert.deepEqual(await parse(stateFile), state);
+        assert.equal((await parse(path.join(root, '.workbench/tailnet.json'))).token, first.token);
+      } finally {
+        await barrier.release();
+        await pending;
+      }
+      assert.deepEqual((await parse(stateFile)).config, existing);
+      const second = await createMapping(root, info, 19437, 19439, randomUUID());
+      try {
+        const state = await parse(stateFile);
+        assert.equal(await stopMapping(root, info, first.token), false);
+        assert.deepEqual(await parse(stateFile), state);
+        assert.equal(state.config.Web[second.hostPort].Handlers['/'].Proxy, second.target);
+        assert.equal((await parse(path.join(root, '.workbench/tailnet.json'))).token, second.token);
+      } finally { await stopTailnet(root, command); }
+      assert.deepEqual((await parse(stateFile)).config, existing);
+      assert.equal(await exists(path.join(root, '.workbench/operation.lock')), false);
+    });
+  }
+});
+
+test('pending creation excludes stops and competing creation through installation and rollback', async t => {
+  for (const failAfterApply of [false, true]) {
+    await t.test(failAfterApply ? 'failed installation rollback' : 'successful installation', async t => {
+      const { root, info, stateFile, command } = await fixture(t);
+      const token = randomUUID(), target = `http://127.0.0.1:19448/__demo_workbench_${token}`;
+      await mutate(stateFile, s => { s.failAfterApply = failAfterApply; });
+      const barrier = await pauseCommand(root, stateFile, ['serve', '--bg', '--http=19447', target]);
+      const pending = createMapping(root, info, 19447, 19448, token).then(record => ({ record }), error => ({ error }));
+      let outcome;
+      try {
+        await barrier.reached();
+        const state = await parse(stateFile);
+        assert.deepEqual(state.config, existing);
+        assert.equal((await parse(path.join(root, '.workbench/tailnet.json'))).token, token);
+        const explicit = spawnSync(process.execPath, [path.join(repo, 'bin/cli.js'), 'serve', '--stop-tailnet', '--tailscale', command], { cwd: root, encoding: 'utf8', timeout: 12000 });
+        assert.notEqual(explicit.status, 0);
+        assert.match(explicit.stderr, /Project is locked/);
+        await assert.rejects(stopMapping(root, info, token), /Project is locked/);
+        await assert.rejects(createMapping(root, info, 19447, 19449, randomUUID()), /Project is locked/);
+        assert.deepEqual(await parse(stateFile), state);
+        assert.equal((await parse(path.join(root, '.workbench/tailnet.json'))).token, token);
+      } finally {
+        await barrier.release();
+        outcome = await pending;
+      }
+      if (failAfterApply) {
+        assert.match(outcome.error?.message || '', /command failed/);
+        assert.equal(await exists(path.join(root, '.workbench/tailnet.json')), false);
+      } else {
+        assert.equal(outcome.error, undefined);
+        assert.equal(outcome.record.token, token);
+        assert.equal((await parse(stateFile)).config.Web[outcome.record.hostPort].Handlers['/'].Proxy, target);
+        await stopTailnet(root, command);
+      }
+      assert.deepEqual((await parse(stateFile)).config, existing);
+      assert.equal(await exists(path.join(root, '.workbench/operation.lock')), false);
+      await mutate(stateFile, s => { s.failAfterApply = false; });
+      const next = await createMapping(root, info, 19447, 19449, randomUUID());
+      assert.equal(await stopMapping(root, info, next.token), true);
+      assert.deepEqual((await parse(stateFile)).config, existing);
+    });
+  }
 });
 
 test('closing an older server preserves the replacement tailnet route', async t => {
