@@ -18,6 +18,28 @@ export function installedBin(bin, args, options = {}) {
   return spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '$a = @(ConvertFrom-Json $env:WB_TEST_ARGS); & $env:WB_TEST_BIN @a; exit $LASTEXITCODE'], { encoding: 'utf8', timeout: 90000, ...options, env });
 }
 
+export async function fakeTailscale(t, script, code) {
+  await fs.writeFile(script, `#!/usr/bin/env node\n${code}`, { mode: 0o755 });
+  if (process.platform !== 'win32') return script;
+  const command = script + '.exe', preload = script + '.preload.cjs';
+  await fs.copyFile(process.execPath, command);
+  await fs.writeFile(preload, `
+if (process.execPath.toLowerCase() === ${JSON.stringify(command.toLowerCase())}) {
+  process.argv[1] = require('node:path').basename(process.argv[1]);
+  process.argv.splice(1, 0, ${JSON.stringify(script)});
+  require(${JSON.stringify(script)});
+  process.exit();
+}
+`);
+  const previous = process.env.NODE_OPTIONS;
+  process.env.NODE_OPTIONS = `${previous || ''} --require "${preload.replaceAll('\\', '/')}"`;
+  t.after(() => {
+    if (previous === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previous;
+  });
+  return command;
+}
+
 export async function fakeNpm(dir, code) {
   await fs.mkdir(dir, { recursive: true });
   if (process.platform === 'win32') {

@@ -9,9 +9,9 @@ import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { invoke, installedBin, withPath } from './helpers/process.js';
 import { treeHashes, json, hash } from '../lib/common.js';
-import { metadata } from '../lib/metadata.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const packageContract = JSON.parse(await fs.readFile(path.join(repo, 'package.json'), 'utf8'));
 function check(result) {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}\n${result.error || ''}`);
   return result.stdout;
@@ -38,22 +38,26 @@ test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall
   assert.ok(packed.files.some(f => f.path === 'lib/diagnostics.js'));
   assert.ok(packed.files.every(f => !/^(test|node_modules|\.github)\//.test(f.path)));
   install(path.join(root, packed.filename));
-  assert.match(installed(['--version']), new RegExp(`demo-workbench ${metadata.version.replaceAll('.', '\\.')}`));
-  assert.match(installed(['-v']), /demo-workbench/);
+  for (const flag of ['--version', '-v']) assert.equal(installed([flag]).trim(), `${packageContract.name} ${packageContract.version}`);
   assert.match(installed(['--help']), /doctor/);
   const diagnosis = JSON.parse(installed(['doctor', '--json']));
   assert.equal(diagnosis.ok, true);
+  assert.deepEqual(diagnosis.tool, { name: packageContract.name, version: packageContract.version, node: packageContract.engines.node });
   assert.equal(diagnosis.platform, process.platform);
   assert.equal(diagnosis.checks.find(c => c.id === 'tailscale').status, 'optional');
   if (process.platform === 'win32') {
     // Native cmd.exe as well as the PowerShell invocation used above.
-    assert.match(check(invoke('cmd.exe', ['/d', '/s', '/c', 'demo-workbench --version'], options)), /demo-workbench/);
+    assert.equal(check(invoke('cmd.exe', ['/d', '/s', '/c', 'demo-workbench --version'], options)).trim(), `${packageContract.name} ${packageContract.version}`);
   }
   const project = path.join(root, 'demo space 日本語');
   installed(['init', project, '--width', '96', '--height', '64', '--fps', '24', '--duration', '0.125']);
   const frozen = await treeHashes(project, '.workbench');
-  assert.equal((await json(path.join(project, 'demo.json'))).starter.version, metadata.version);
-  assert.equal((await json(path.join(project, '.workbench/package.json'))).version, metadata.version);
+  const starter = (await json(path.join(project, 'demo.json'))).starter;
+  const runtime = await json(path.join(project, '.workbench/package.json'));
+  assert.equal(starter.name, packageContract.name);
+  assert.equal(starter.version, packageContract.version);
+  assert.equal(runtime.name, packageContract.name);
+  assert.equal(runtime.version, packageContract.version);
 
   // Install through npm's Git transport from a disposable source, not a folder
   // dependency/link. A distinct version proves the update path really ran.
@@ -66,10 +70,15 @@ test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall
   const sha = check(invoke('git', ['rev-parse', 'HEAD'], { ...options, cwd: source })).trim();
   install(pathToFileURL(source).href.replace(/^file:/, 'git+file:') + '#' + sha);
   await fs.rm(source, { recursive: true, force: true, maxRetries: 3 });
-  assert.match(installed(['--version']), /0\.2\.1-install-fixture/);
+  for (const flag of ['--version', '-v']) assert.equal(installed([flag]).trim(), `${pkg.name} ${pkg.version}`);
   const next = path.join(root, 'next demo');
   installed(['init', next, '--width', '64', '--height', '48', '--duration', '0.05']);
-  assert.equal((await json(path.join(next, 'demo.json'))).starter.version, pkg.version);
+  const nextStarter = (await json(path.join(next, 'demo.json'))).starter;
+  const nextRuntime = await json(path.join(next, '.workbench/package.json'));
+  assert.equal(nextStarter.name, pkg.name);
+  assert.equal(nextStarter.version, pkg.version);
+  assert.equal(nextRuntime.name, pkg.name);
+  assert.equal(nextRuntime.version, pkg.version);
   assert.deepEqual(await treeHashes(project, '.workbench'), frozen);
 
   // Hosted runs additionally prove the real private/public GitHub source at the
@@ -82,7 +91,7 @@ test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall
       GIT_CONFIG_VALUE_0: 'AUTHORIZATION: basic ' + Buffer.from('x-access-token:' + process.env.DEMO_GITHUB_TOKEN).toString('base64')
     });
     check(invoke('npm', ['install', '--global', '--prefix', prefix, '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', process.env.DEMO_GIT_SOURCE], { ...options, env: remoteEnv }));
-    assert.match(installed(['--version']), new RegExp(metadata.version.replaceAll('.', '\\.')));
+    assert.equal(installed(['--version']).trim(), `${packageContract.name} ${packageContract.version}`);
   }
   npm(['uninstall', '--global', '--prefix', prefix, '--ignore-scripts', 'demo-workbench']);
   await assert.rejects(fs.lstat(path.join(binDir, process.platform === 'win32' ? 'demo-workbench.cmd' : 'demo-workbench')), { code: 'ENOENT' });
@@ -90,7 +99,7 @@ test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall
   check(invoke('npm', ['run', 'demo:render', '--', '--note', 'After initializer removal'], { ...options, cwd: project }));
   const archived = await hash(path.join(project, 'runs/v001/render.mp4'));
   const cli = path.join(project, '.workbench/bin/cli.js');
-  assert.match(check(invoke(process.execPath, [cli, '--version'], { ...options, cwd: project })), new RegExp(metadata.version.replaceAll('.', '\\.')));
+  for (const flag of ['--version', '-v']) assert.equal(check(invoke(process.execPath, [cli, flag], { ...options, cwd: project })).trim(), `${packageContract.name} ${packageContract.version}`);
   assert.equal(JSON.parse(check(invoke(process.execPath, [cli, 'doctor', '--json'], { ...options, cwd: project }))).ok, true);
   const child = spawn(process.execPath, [cli, 'serve', '--port', '0'], { cwd: project, env, stdio: ['ignore', 'pipe', 'pipe'] });
   const exited = once(child, 'exit'); let output = '';
@@ -106,5 +115,5 @@ test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall
     assert.equal((await fetch(url + '/demo.json')).status, 404);
   } finally { child.kill(); await exited; }
   assert.equal(await hash(path.join(project, 'runs/v001/render.mp4')), archived);
-  console.log(`INSTALL_PROOF platform=${process.platform} wsl=${diagnosis.wsl} version=${metadata.version} tarball/git/shim/doctor/render/serve/upgrade/uninstall=passed github=${!!process.env.DEMO_GIT_SOURCE}`);
+  console.log(`INSTALL_PROOF platform=${process.platform} wsl=${diagnosis.wsl} version=${packageContract.version} tarball/git/shim/doctor/render/serve/upgrade/uninstall=passed github=${!!process.env.DEMO_GIT_SOURCE}`);
 });

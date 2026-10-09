@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { exists } from '../lib/common.js';
+import { fakeTailscale } from './helpers/process.js';
 import { createOutputServer, serve } from '../lib/serve.js';
 import { validateIdentity, directAddresses, assertFree, createMapping, stopMapping, verifyEndpoint, inspectTailnet, serveConfig, stopTailnet } from '../lib/tailnet.js';
 
@@ -24,10 +25,9 @@ async function fixture(t) {
   await fs.mkdir(path.join(root, 'public/media/v001'), { recursive: true });
   await fs.writeFile(path.join(root, 'public/media/v001/web.mp4'), Buffer.from('0123456789abcdef'));
   await fs.writeFile(path.join(root, 'private.txt'), 'not public');
-  const stateFile = path.join(root, 'ts-state.json'), command = path.join(root, 'tailscale.cjs');
+  const stateFile = path.join(root, 'ts-state.json');
   await fs.writeFile(stateFile, JSON.stringify({ status, config: existing, calls: [] }));
-  await fs.writeFile(command, `#!${process.execPath}
-const fs = require('node:fs');
+  const command = await fakeTailscale(t, path.join(root, 'tailscale.cjs'), `const fs = require('node:fs');
 const file = ${JSON.stringify(stateFile)};
 const s = JSON.parse(fs.readFileSync(file));
 const a = process.argv.slice(2);
@@ -54,7 +54,7 @@ else {
  fs.writeFileSync(file, JSON.stringify(s));
  if (s.failAfterApply && a.at(-1) !== 'off') process.exitCode = 1;
 }
-`, { mode: 0o755 });
+`);
   return { root, command, stateFile, info: { ...validateIdentity(status), command } };
 }
 async function mutate(file, fn) { const s = await parse(file); fn(s); await fs.writeFile(file, JSON.stringify(s)); }
