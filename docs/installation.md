@@ -1,21 +1,24 @@
 # Installation, diagnostics and updates
 
 The CLI uses npm's ordinary `bin` mechanism. There is no bootstrap service,
-postinstall hook, OS installer, registry package, or automatic authentication.
+postinstall hook, OS installer, runtime npm dependency, or automatic authentication.
 [package.json](../package.json) owns the package version;
 `demo-workbench --version` (or `-v`) reports what is actually installed.
-This repository is currently private. Future public
-access will use the same Git installation mechanism without the private-access
-prerequisite; npm publication and redistribution rights are separate work.
+The repository is public. The npm package is **`@eclinick/demo-workbench`**;
+the executable remains **`demo-workbench`**. The unscoped npm name belongs to
+an unrelated project, not this CLI.
+
+**Publication pending:** these registry instructions describe the upcoming first
+scoped release, `0.2.0`, not an already available package. Until publication is
+confirmed, use the [Git-source alternative](#git-source-alternative).
 
 ## Prerequisites
 
 - **Node >=18 and npm**; use a supported Node LTS (22/24 recommended). Node 18
   compatibility is tested, not a recommendation to install an end-of-life Node.
-- **Git** with `git init -b` support (2.28+), and existing Git access to this
-  repository for Git-source installation. Your Git credentials/SSH configuration
-  must already work; a browser or agent's GitHub login is not necessarily Git
-  authentication. No credentials belong in the URL or a saved command.
+- **Git** with `git init -b` support (2.28+) for project initialization and
+  Git-source installation. Public HTTPS source installation needs no GitHub login.
+  No credentials belong in the URL or a saved command.
 - **FFmpeg and ffprobe** on PATH, including **libx264, AAC and drawtext**. The
   comparison labels use an existing system font (Arial on Windows/macOS,
   DejaVu Sans on common Linux systems), falling back to FFmpeg font lookup.
@@ -34,15 +37,14 @@ prerequisite; npm publication and redistribution rights are separate work.
 
 ## Install once
 
-One command, from any directory; no persistent source checkout is needed.
-The `main` branch below is moving source, **not** a published release/tag.
-For a reproducible or reviewed installation, replace `#main` with the approved
-full commit SHA. Do not assume a release tag or npm registry package exists.
+After publication, one command from any directory; no source checkout or npm
+login is needed. The package has no install hooks or runtime dependencies.
+To pin the first release, append `@0.2.0` to the scoped package name.
 
 **macOS, Linux and WSL (sh/bash/zsh):**
 
 ```sh
-npm install --global --ignore-scripts --omit=dev --no-audit --no-fund 'git+https://github.com/EClinick/demo-workbench.git#main'
+npm install -g @eclinick/demo-workbench
 demo-workbench --version
 demo-workbench doctor
 ```
@@ -50,21 +52,29 @@ demo-workbench doctor
 **Native Windows PowerShell:**
 
 ```powershell
-npm.cmd install --global --ignore-scripts --omit=dev --no-audit --no-fund 'git+https://github.com/EClinick/demo-workbench.git#main'
+npm.cmd install -g @eclinick/demo-workbench
 demo-workbench.cmd --version
 demo-workbench.cmd doctor
 ```
 
 The `.cmd` spelling avoids PowerShell blocking npm's `.ps1` shim. Do not change
-execution policy to use this tool. **Native cmd.exe:** use the same commands
-with double quotes instead of single quotes around the Git URL; `npm` and
-`demo-workbench` resolve their `.cmd` shims automatically.
+execution policy to use this tool. **Native cmd.exe:** use the same commands;
+`npm` and `demo-workbench` resolve their `.cmd` shims automatically.
 
-If your existing Git authentication is SSH, substitute
-`git+ssh://git@github.com/EClinick/demo-workbench.git#main` (or a pinned SHA).
-An authentication error is not an invitation for the tool to log you in or
-modify Git configuration. No `npx demo-workbench` shortcut is advertised:
-there is no registry package whose ownership this project can assume.
+### Git-source alternative
+
+The public repository can also be installed without waiting for npm publication:
+
+```sh
+npm install --global --ignore-scripts --omit=dev --no-audit --no-fund 'git+https://github.com/EClinick/demo-workbench.git#main'
+```
+
+`main` moves; for a reproducible/reviewed install, replace `#main` with a full
+reviewed commit SHA. No release tag is assumed. In PowerShell use `npm.cmd`;
+in cmd.exe use double quotes around the URL. If your existing Git authentication
+is SSH, substitute `git+ssh://git@github.com/EClinick/demo-workbench.git#main`
+(or a pinned SHA). Authentication failures are not an invitation for the tool
+to log you in or modify Git configuration.
 
 ### If the command is not found or the prefix is unwritable
 
@@ -77,6 +87,13 @@ Do not run the installation with sudo or change global configuration blindly.
 The workbench never edits shell startup files, PATH, npm settings, or accounts.
 Switching Node installations/version-manager versions can select another prefix;
 reinstall under the intended Node installation rather than keeping a worktree link.
+
+If an older Git-source installation already owns the `demo-workbench` executable,
+the new scoped install may report `EEXIST`. Inspect `npm ls -g --depth=0` and the
+existing executable's package/source first. Remove only your verified old
+workbench installation from that prefix before installing the scoped package;
+do not use `--force` to overwrite another package's command. Older generated
+projects keep their frozen runtime and do not need to be recreated.
 
 ## Daily use
 
@@ -154,13 +171,19 @@ access depends on your existing ACLs/client connectivity and needs its own test.
 
 ## Update and uninstall
 
-To update, repeat the **same install command** with `#main` or a newly reviewed
-commit SHA, then check `--version` and `doctor`. To pin/roll back, specify the
-older reviewed SHA explicitly. Do not rely on `npm update -g demo-workbench` to
-track Git releases as if this were a registry channel.
+After publication, update to the latest scoped release or uninstall with:
 
-Uninstall with `npm uninstall --global demo-workbench` (`npm.cmd` in PowerShell),
-using the original npm prefix. Stop any serving process/owned route first.
+```sh
+npm install -g @eclinick/demo-workbench@latest
+npm uninstall -g @eclinick/demo-workbench
+```
+
+Use `npm.cmd` in PowerShell and the original npm prefix. To pin/roll back, install
+an explicit published version, for example `@eclinick/demo-workbench@0.2.0`.
+For Git-source installs, repeat the Git install command with `#main` or a newly
+reviewed commit SHA; to roll back, specify an older reviewed SHA. Check
+`--version` and `doctor` after updating. Stop any serving process/owned route
+before uninstalling.
 Uninstall removes the package/bin, **not** demos, media, Git repositories or
 Tailscale routes. Updating/removing the initializer never rewrites existing
 projects. Each generated project records its generator version in `demo.json`
@@ -180,7 +203,8 @@ npm install --global --offline --ignore-scripts --omit=dev --no-audit --no-fund 
 Use `npm.cmd` in PowerShell. This
 is a real packaged copy, not `npm link` or a global directory dependency that
 can break when a disposable checkout is removed. Keep NOTICE with the artifact;
-private local installation is not permission to redistribute it publicly.
+public availability does not grant an open-source license or permission to
+redistribute the original gallery work.
 
 ## Platform verification
 
