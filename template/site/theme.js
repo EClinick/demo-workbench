@@ -1,4 +1,4 @@
-// Shared theme preference; the content still works with scripts/storage disabled.
+// Theme storage is optional; blocked storage must not prevent the toggle.
 (function () {
   var root = document.documentElement;
   var button = document.getElementById('theme');

@@ -49,8 +49,10 @@ npm install --prefix "$install_dir" --offline --ignore-scripts --no-audit --no-f
 The command is locally installed at that exact path; this does **not** add it to
 PATH, publish to npm, use npx, or make a global installation. No registry package
 is advertised. Both direct and tarball invocation are exercised by `npm test`.
-The generated project vendors the small CLI/gallery and has a locked, zero-runtime-
-dependency package; deleting the initializer installation does not break rendering.
+The generated project vendors the runtime CLI/gallery and has a locked,
+zero-runtime-dependency package; deleting the initializer installation does not
+break rendering. Its CLI provides only render, compare, review, archive and serve;
+use the original standalone CLI to initialize another project.
 Project init checks prerequisites, runs offline `npm ci` and a one-frame renderer
 smoke test, and initializes Git `main` with **no commit and no remote**. It never
 changes global Git identity or Claude settings. When the caller has an effective
@@ -107,20 +109,15 @@ public Funnel. Access also depends on your tailnet ACLs and client connectivity;
 a same-machine check is not proof from a second device.
 
 Occupied mappings/backend ports are refused, not replaced. Ctrl-C/SIGTERM closes
-listeners and removes only the exact owned mapping. After a crash, run:
+listeners and attempts cleanup of its own mapping. After a crash or refused
+cleanup, run:
 
 ```sh
 npm run demo:serve -- --stop-tailnet
 ```
 
-Cleanup verifies node identity and a unique target path against the private
-`.workbench/tailnet.json` record. Changed/replaced routes are left alone with a
-diagnostic. An exclusive temporary per-node/port lease prevents two workbench
-projects from taking the same mapped port. Do not edit Tailscale mappings while a
-serve/stop command runs: the native CLI does not expose a cross-administrator
-atomic reservation. No reset, Funnel, wildcard Host allowlist or global setting
-change is used. See the generated [README](template/README.md#private-tailnet-serving)
-for lifecycle and recovery details.
+See the generated [README](template/README.md#private-tailnet-serving) for the
+mapping ownership, locking, external-administrator constraints and recovery rules.
 
 ## Reused gallery, not a new design
 
@@ -160,12 +157,12 @@ reuse**, not an open-source redistribution grant. See [NOTICE.md](NOTICE.md).
 ## Verification
 
 ```sh
-npm ci --offline --ignore-scripts
+npm ci --ignore-scripts
 npm run check
 npm test
 ```
 
-Tests create only synthetic fixtures in a clean temp directory and exercise:
+Tests create synthetic fixtures in isolated temporary directories and exercise:
 actual tarball installation; source-path independence; two reference aspect/FPS
 classes (4:3 at 24000/1001 and 16:9 at 60); different source/output FPS; audio mux;
 new/pending/imported review states; two versions with stable old media and review
@@ -173,14 +170,17 @@ hashes; failed/non-producing render isolation; archive/export; missing dependenc
 and inputs; existing/symlink-target refusal; byte-range seeking, MIME, HEAD,
 loopback binding and privacy. Tailnet tests cover verified identity, direct-address
 selection, generated CLI inheritance, missing/offline tools, mapping/port conflicts,
-exact cleanup and Host/Origin/Range/privacy behavior through a proxy prefix.
-`DEMO_KEEP_TEST_OUTPUT=1 npm test` retains the temp
-fixture directory and prints its path for manual inspection.
+exact cleanup, overlapping lifecycle operations and Host/Origin/Range/privacy
+behavior through a proxy prefix. Regression checks also cover fresh-checkout
+bootstrap, runtime-only command dispatch and rejection of non-MP4 containers.
+DOM-based gallery checks exercise pending scores, media selection and local-only
+links/resources; they do not decode or play media.
+`DEMO_KEEP_TEST_OUTPUT=1 npm test` retains the end-to-end fixture directory and
+prints its path for manual inspection.
 
-Browser verification was attempted using `chrome-devtools-axi` but returned
-`BRIDGE_NOT_READY` (attached CDP target gone). **Visual layout, interactive playback,
-dark mode, and real browser seeking remain unverified**, despite passing HTTP,
-media-probe and script-syntax checks. No browser/shared-service repair was attempted.
+**Visual layout, interactive playback, dark mode, and real browser seeking remain
+unverified** by these automated checks. DOM, HTTP, media-probe and script-syntax
+checks are not substitutes for verification in a real browser.
 A generated project was tested through the actual Windows Tailscale Serve route
 from WSL using MagicDNS: local/tailnet HTTP 200, MP4 Range 206, private paths 404,
 untrusted Host/Origin 403, and exact restoration of existing Serve configuration

@@ -28,6 +28,7 @@ test('generated gallery shows pending scores, selects either comparison, and kee
   t.after(() => dom.window.close());
   assert.deepEqual(page.errors, []);
   assert.equal(document.getElementById('project-title').textContent, 'Synthetic demo');
+  assert.equal(dom.window.getComputedStyle(document.getElementById('refresh')).display, 'none', 'An unchanged gallery must not announce new data');
   assert.equal(document.getElementById('m-score').textContent, 'not judged yet');
   const rows = [...document.querySelectorAll('#scores tbody tr')];
   assert.equal(rows[0].textContent, 'v001: not judged yet');

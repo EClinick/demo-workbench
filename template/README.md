@@ -50,8 +50,16 @@ Media and scratch are ignored, not disposable.
 - `site/`: approved extracted gallery/theme. Agents do not rebuild it per scene.
 - `public/`: only gallery, manifest and explicitly selected media. It contains
   render notes and imported review findings, but not raw source or transcripts.
-- `.workbench/`: vendored CLI, per-run scratch, an exclusive render lock, and an
+- `.workbench/`: vendored CLI, per-run scratch, the project operation lock, and an
   ignored `tailnet.json` ownership record while a private Serve mapping exists.
+
+On a fresh checkout, project commands recreate missing `assets/`, `runs/` and
+`public/` directories, copy missing gallery files from `site/`, and initialize a
+missing public manifest with no versions. Existing files and archives are not
+replaced, and symlinks are refused. Private inputs and runs are Git-ignored: restore
+any configured inputs separately before rendering. If you restore archived runs,
+`npm run demo:compare -- v001` verifies that run and republishes the gallery from
+all available archives; serving alone does not republish them.
 
 FPS accepts a rational such as `24000/1001` or `60`; dimensions must be even.
 Reference-driven init uses actual reference dimensions/FPS/duration by default.
@@ -75,11 +83,12 @@ new renderer dependencies silently.
 
 Write a fresh **silent H.264/yuv420p MP4** at the supplied absolute output path;
 exit nonzero on failure. Use demo.json's `video.width`, `height`, `fps`, `duration`.
-Never reuse a shared output or run directory. The workbench validates dimensions,
-codec, FPS, duration and absent audio, then muxes the configured soundtrack itself,
-probes again, makes a small web encode and snapshots provenance. Source must stay
-unchanged during the run. Custom code/dependencies outside src/assets should be
-moved into those trees for snapshotting; tool dependencies are not bundled in runs.
+Never reuse a shared output or run directory. The workbench validates the MP4
+container, H.264 codec, yuv420p pixel format, dimensions, FPS, duration and absent
+audio, then muxes the configured soundtrack itself, probes again, makes a small
+web encode and snapshots provenance. Source must stay unchanged during the run.
+Custom code/dependencies outside src/assets should be moved into those trees for
+snapshotting; tool dependencies are not bundled in runs.
 
 ### Alignment and judging
 
@@ -165,19 +174,24 @@ use a unique backend URL prefix and persist exact node/port/target ownership in
 per-node/port lease file under the OS temporary directory. This is not a daemon.
 Do not delete these records or reuse ports while a mapping is live.
 
-Ctrl-C/SIGTERM removes only the exact owned Serve mapping and closes all listeners.
-After a crash or forced termination, use:
+Mapping creation, rollback and cleanup use the shared
+[project operation lock](#failures-preservation-and-privacy), with ownership checks
+inside the locked operation. Ctrl-C/SIGTERM closes all listeners and attempts to
+remove only the mapping created by that server invocation; it cannot remove a
+replacement invocation's mapping. After a crash, forced termination or refused
+cleanup, use:
 
 ```sh
 npm run demo:serve -- --stop-tailnet
 # Add --tailscale PATH when necessary to select the original client/node.
 ```
 
-This removes the mapping, ownership record and matching lease, not other services.
-It does not kill another process; a still-running local server stops with its own
-Ctrl-C. Direct bindings disappear when their process stops, with no mapping to
-clean. Cleanup refuses if the node, target, handlers or Funnel state no longer
-match the record; inspect the diagnostic and existing Tailscale status rather
+Explicit stop removes the currently recorded exact owned mapping, ownership record
+and matching lease, not other services. It does not kill another process; a
+still-running local server stops with its own Ctrl-C. Direct bindings disappear
+when their process stops, with no mapping to clean. Cleanup refuses if the node,
+target, handlers or Funnel state no longer match the record; inspect the diagnostic
+and existing Tailscale status rather
 than resetting shared configuration. Missing/offline tools leave ownership data
 for a later safe cleanup. A stale route cannot reach a different workbench process
 because each proxy target includes its own instance prefix.
@@ -190,14 +204,20 @@ is not supported by these options.
 
 ### Failures, preservation and privacy
 
-Every render uses fresh scratch and one project-wide lock. Nothing updates the
-public manifest until all new artifacts validate. On failure inspect the printed
-scratch path/ERROR.txt; fix source and retry. Scratch is deliberately retained.
+Render, compare, review, archive, and Serve mapping creation/cleanup share
+`.workbench/operation.lock`. Overlapping operations fail with `Project is locked`
+rather than waiting. Retry after the active command completes; if shutdown cleanup
+was refused, run `serve --stop-tailnet` afterward. Never remove a live command's
+lock. If a process is killed, confirm that no operation is still running before
+manually removing a stale lock; there is no resume daemon.
+
+Every render uses fresh scratch. Nothing updates the public manifest until all
+new artifacts validate. On failure inspect the printed scratch path/ERROR.txt;
+fix source and retry. Scratch is deliberately retained.
 If a run was archived before a publication failure, its number remains reserved;
 `compare VERSION` verifies it and retries publication. No partial success is
-reported as a complete render. If a process is killed, inspect for running work
-before manually removing `.workbench/operation.lock`; there is no resume daemon.
-Do not edit run/public files to get around integrity failures.
+reported as a complete render. Do not edit run/public files to get around integrity
+failures.
 
 Serving defaults to **127.0.0.1**, with deliberate private tailnet access as described
 above. Both modes support GET/HEAD and single byte ranges, and only allow generated

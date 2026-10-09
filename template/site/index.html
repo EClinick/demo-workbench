@@ -68,6 +68,7 @@ tr.pending td{color:var(--graphite);font-style:italic}
 #lb .x{top:12px;right:12px} #lb .p{left:10px;top:50%} #lb .n{right:10px;top:50%}
 .btn{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--paper);text-decoration:none;border:0;border-radius:6px;padding:10px 18px;min-height:44px;font:700 var(--t-1) var(--font-sans);cursor:pointer}
 .btn.alt{background:var(--paper-raised);color:var(--ink);border:1px solid var(--rule)}
+.btn[hidden]{display:none}
 .chips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
 .chip{font-size:var(--t-0);font-weight:700;font-variant-numeric:tabular-nums;background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:0 8px;color:var(--ink)}
 .chip.mean{background:var(--ink);border-color:var(--ink);color:var(--paper)}
@@ -238,7 +239,7 @@ audio{width:100%;max-width:520px;margin-top:8px}
     });
   }
 
-  // Render / Side-by-side tabs over one lazily-loaded <video>. Side-by-side is only fetched on first click.
+  // Keep unselected media unloaded, including inside lazily opened history entries.
   function playerTabs(host, v, comparisonFirst){
     var vid = el('video'); vid.controls = true; vid.playsInline = true; vid.preload = 'metadata';
     var modes = [{k:'render', t:'Render', src:v.video, ar:v.width + '/' + v.height}];
