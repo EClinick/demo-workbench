@@ -39,6 +39,17 @@ test('aggregate checks report each missing dependency and codec/filter without a
   assert.equal(allMissing.filter(c => c.status === 'error').length, 7);
 });
 
+test('FFmpeg capability parsing accepts version 9 two-flag filters and earlier three-flag filters', () => {
+  for (const flags of ['T.', 'T.C']) {
+    const checks = prerequisiteChecks({ locate: name => name, execute: (name, args) => {
+      if (args.includes('-filters')) return `Filters:\n ${flags} drawtext          V->V       Draw text on top of video.\n`;
+      if (args.includes('-encoders')) return ' V....D libx264 H.264\n A..... aac AAC';
+      return 'fixture version';
+    } });
+    assert.equal(checks.some(c => c.status === 'error'), false, JSON.stringify(checks));
+  }
+});
+
 test('native npm invocation resolves shims without shell interpolation, preserving spaces and Unicode', async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'npm shim ü '));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
