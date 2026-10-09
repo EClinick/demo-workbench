@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { createOutputServer, serve } from '../lib/serve.js';
-import { validateIdentity, directAddresses, assertFree, createMapping, stopMapping, verifyEndpoint, inspectTailnet, serveConfig } from '../lib/tailnet.js';
+import { validateIdentity, directAddresses, assertFree, createMapping, stopMapping, verifyEndpoint, inspectTailnet, serveConfig, stopTailnet } from '../lib/tailnet.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const status = { BackendState: 'Running', Self: { ID: 'synthetic-node', Online: true, DNSName: 'demo.tailtest.ts.net.', TailscaleIPs: ['100.100.100.100', 'fd7a:115c:a1e0::1'] }, CurrentTailnet: { MagicDNSSuffix: 'tailtest.ts.net', MagicDNSEnabled: true } };
@@ -22,7 +22,7 @@ async function fixture(t) {
   await fs.mkdir(path.join(root, 'public/media/v001'), { recursive: true });
   await fs.writeFile(path.join(root, 'public/media/v001/web.mp4'), Buffer.from('0123456789abcdef'));
   await fs.writeFile(path.join(root, 'private.txt'), 'not public');
-  const stateFile = path.join(root, 'ts-state.json'), command = path.join(root, 'tailscale');
+  const stateFile = path.join(root, 'ts-state.json'), command = path.join(root, 'tailscale.cjs');
   await fs.writeFile(stateFile, JSON.stringify({ status, config: existing, calls: [] }));
   await fs.writeFile(command, `#!${process.execPath}
 const fs = require('node:fs');
@@ -80,13 +80,13 @@ test('mapping ownership, collisions, exact cleanup and partial failure use actua
   assert.deepEqual((await parse(stateFile)).config, before, 'another project cannot acquire the same mapped port');
   // A new handler/funnel or changed target is not ours to remove.
   await mutate(stateFile, x => { x.config.Web[record.hostPort].Handlers['/other'] = { Proxy: 'http://127.0.0.1:1234' }; });
-  await assert.rejects(stopMapping(root, info), /changed\/replaced/);
+  await assert.rejects(stopMapping(root, info, token), /changed\/replaced/);
   assert.equal((await parse(stateFile)).calls.length, 1);
   await mutate(stateFile, x => { x.config = before; x.config.AllowFunnel = { [record.hostPort]: true }; });
-  await assert.rejects(stopMapping(root, info), /changed\/replaced/);
+  await assert.rejects(stopMapping(root, info, token), /changed\/replaced/);
   await mutate(stateFile, x => { x.config = before; delete x.config.AllowFunnel; });
-  await assert.rejects(stopMapping(root, { ...info, nodeID: 'another-node' }), /does not match/);
-  assert.equal(await stopMapping(root, info), true);
+  await assert.rejects(stopMapping(root, { ...info, nodeID: 'another-node' }, token), /does not match/);
+  assert.equal(await stopMapping(root, info, token), true);
   s = await parse(stateFile);
   assert.deepEqual(s.config, existing);
   assert.deepEqual(s.calls.at(-1), ['serve', '--http=19417', 'off']);
@@ -100,6 +100,66 @@ test('mapping ownership, collisions, exact cleanup and partial failure use actua
   await assert.rejects(fs.stat(path.join(root, '.workbench/tailnet.json')), { code: 'ENOENT' });
   await mutate(stateFile, x => { x.config = null; });
   assert.deepEqual(await serveConfig(info), {}, 'fresh Tailscale nodes may report null config');
+});
+
+test('automatic cleanup cannot remove a replacement invocation mapping', async t => {
+  const { root, info, stateFile } = await fixture(t);
+  const first = await createMapping(root, info, 19427, 19428, randomUUID());
+  await stopTailnet(root, info.command);
+  assert.equal(await stopMapping(root, info, first.token), false);
+  const second = await createMapping(root, info, 19427, 19429, randomUUID());
+  t.after(() => stopMapping(root, info, second.token));
+  const state = await parse(stateFile);
+  const record = await parse(path.join(root, '.workbench/tailnet.json'));
+  assert.equal(await stopMapping(root, info, first.token), false);
+  assert.deepEqual(await parse(stateFile), state);
+  assert.deepEqual(await parse(path.join(root, '.workbench/tailnet.json')), record);
+  assert.equal(await stopMapping(root, info, second.token), true);
+  assert.deepEqual((await parse(stateFile)).config, existing);
+});
+
+test('closing an older server preserves the replacement tailnet route', async t => {
+  const { root, command, stateFile } = await fixture(t);
+  const project = path.join(root, 'generated');
+  const initialized = spawnSync(process.execPath, [path.join(repo, 'bin/cli.js'), 'init', project], { encoding: 'utf8' });
+  assert.equal(initialized.status, 0, initialized.stderr);
+  const proxy = http.createServer(async (req, res) => {
+    const config = (await parse(stateFile)).config;
+    const target = config.Web?.[req.headers.host]?.Handlers['/'].Proxy;
+    if (!target) { res.writeHead(404); res.end(); return; }
+    const upstream = http.request(target + req.url, { headers: req.headers }, response => {
+      res.writeHead(response.statusCode, response.headers); response.pipe(res);
+    });
+    upstream.on('error', () => { res.writeHead(502); res.end(); });
+    upstream.end();
+  });
+  await new Promise(resolve => proxy.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => proxy.close(resolve)));
+  const tailPort = proxy.address().port;
+  const get = http.get;
+  t.mock.method(http, 'get', (url, options, callback) => get(url, {
+    ...options, family: 4, lookup: (hostname, opts, done) => done(null, '127.0.0.1', 4)
+  }, callback));
+  async function freePort() {
+    const server = http.createServer();
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const port = server.address().port;
+    await new Promise(resolve => server.close(resolve));
+    return port;
+  }
+  const options = { tailnet: true, tailnetMode: 'serve', tailnetPort: tailPort, tailscale: command };
+  const first = await serve(project, await freePort(), options);
+  t.after(() => first.closeWorkbench());
+  await stopTailnet(project, command);
+  const second = await serve(project, await freePort(), options);
+  t.after(() => second.closeWorkbench());
+  const state = await parse(stateFile);
+  const ownership = await parse(path.join(project, '.workbench/tailnet.json'));
+  await first.closeWorkbench();
+  assert.deepEqual(await parse(stateFile), state);
+  assert.deepEqual(await parse(path.join(project, '.workbench/tailnet.json')), ownership);
+  await verifyEndpoint(second.tailnetUrl, ownership.token, { windowsFromWSL: false });
+  await second.closeWorkbench();
 });
 
 test('output server accepts concrete tailnet Host/Origin only and preserves privacy/Range through owned proxy prefix', async t => {

@@ -8,5 +8,6 @@
   "engines": { "node": ">=18" },
   "scripts": { "test": "node --test --test-concurrency=1", "check": "node --check bin/cli.js && node --check lib/workbench.js" },
   "files": ["bin", "lib", "template", "README.md", "NOTICE.md"],
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": { "jsdom": "^26.1.0" }
 }

@@ -8,6 +8,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { hash, json } from '../lib/common.js';
 import { serve } from '../lib/serve.js';
+import { JSDOM } from 'jsdom';
+import { assertGalleryPrivacy } from './helpers/gallery.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(repo, 'bin/cli.js');
@@ -52,7 +54,9 @@ test('actual local install and complete isolated CLI workflow', { timeout: 18000
     assert.equal(exec('git', ['remote'], p).stdout.trim(), '');
     exec('npm', ['ci', '--offline', '--ignore-scripts', '--no-audit', '--no-fund'], p);
     assert.deepEqual((await json(path.join(p, 'public/data.json'))).versions, []);
-    assert.ok(!(await fs.readFile(path.join(p, 'site/index.html'), 'utf8')).includes('how-we-made-this'));
+    const page = new JSDOM(await fs.readFile(path.join(p, 'public/index.html'), 'utf8'), { url: 'http://gallery.test/index.html' });
+    assertGalleryPrivacy(page.window.document);
+    page.window.close();
   }
   // Remove the local installation entirely: generated runtime cannot depend on it.
   await fs.rm(installer, { recursive: true });
