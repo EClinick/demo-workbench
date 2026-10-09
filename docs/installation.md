@@ -18,6 +18,11 @@ prerequisite; npm publication and redistribution rights are separate work.
 - **FFmpeg and ffprobe** on PATH, including **libx264, AAC and drawtext**. The
   comparison labels use an existing system font (Arial on Windows/macOS,
   DejaVu Sans on common Linux systems), falling back to FFmpeg font lookup.
+  Current Homebrew's minimal `ffmpeg` formula omits drawtext: use a build with
+  that capability, such as `ffmpeg-full`, and put its `bin` directory on your PATH
+  (`brew --prefix ffmpeg-full` locates it). CI selects that keg explicitly rather
+  than silently using the minimal build. On Windows the tested Chocolatey
+  `ffmpeg`/Gyan essentials build includes the required capabilities.
   No fonts or external tools are bundled/downloaded. Install prerequisites
   yourself through sources you trust; the workbench does not run sudo or an OS
   package manager. FFmpeg is needed for init/render, not the npm installation.

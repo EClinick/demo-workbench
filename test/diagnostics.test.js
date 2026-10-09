@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { prerequisiteChecks } from '../lib/diagnostics.js';
 import { commandSpec, run, spawnCommandSync } from '../lib/process.js';
 import { metadata } from '../lib/metadata.js';
+import { labelFont, drawtextFont } from '../lib/font.js';
 import { fakeNpm, withPath } from './helpers/process.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -48,6 +49,20 @@ test('FFmpeg capability parsing accepts version 9 two-flag filters and earlier t
     } });
     assert.equal(checks.some(c => c.status === 'error'), false, JSON.stringify(checks));
   }
+});
+
+test('real drawtext font paths survive both filter parsers, including Windows drive colons', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'font path '));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const systemFont = labelFont();
+  assert.ok(systemFont, 'This rendering test needs an existing system label font.');
+  // POSIX reproduces the Windows drive-colon parser bug without mocking an OS.
+  const file = process.platform === 'win32' ? systemFont : path.join(root, 'colon:space font.ttf');
+  if (file !== systemFont) await fs.copyFile(systemFont, file);
+  const output = run('ffmpeg', ['-hide_banner', '-loglevel', 'debug', '-f', 'lavfi', '-i', 'color=size=64x48:duration=0.05', '-vf', `drawtext=${drawtextFont(file)}text=Reference`, '-frames:v', '1', '-f', 'null', '-'], { timeout: 10000, includeStderr: true });
+  // Older FFmpeg can silently treat the text after a broken colon as another
+  // option and fall back to a default font. Exit zero alone misses that bug.
+  assert.ok(output.includes(`Setting 'fontfile' to value '${file.replaceAll('\\', '/')}'`), output);
 });
 
 test('native npm invocation resolves shims without shell interpolation, preserving spaces and Unicode', async t => {
