@@ -1,16 +1,18 @@
 # demo-workbench · local-first
 
-Create a demo folder and local Git repo once; let agents work on scenes instead of
-rebuilding the review website. A small Node CLI renders MP4s, preserves numbered
-versions and exact-output reviews, and updates the **same extracted Love gallery**.
-Local-first, with explicit private tailnet sharing: no registry publication,
-remote creation, agent service or public deployment.
+Set up a demo folder and a local Git repo once, then let agents iterate on scenes
+instead of rebuilding the review site every time. A small Node CLI renders MP4s,
+keeps every version numbered, ties each review to the exact output it judged, and
+updates the **same gallery extracted from Love**.
+
+Everything runs on your machine. You can share it privately over your tailnet if
+you ask for that. Nothing gets published to a registry, deployed publicly, or
+handed to a hosted agent service.
 
 ## Quick start
 
-With the [prerequisites](docs/installation.md#prerequisites) already installed,
-install once from any directory (the repository currently requires existing Git
-access):
+Install the [prerequisites](docs/installation.md#prerequisites) first. Then
+install once from any directory. You need Git access to the repo for now.
 
 ```sh
 npm install --global --ignore-scripts --omit=dev --no-audit --no-fund 'git+https://github.com/EClinick/demo-workbench.git#main'
@@ -18,21 +20,23 @@ demo-workbench --version
 demo-workbench doctor
 demo-workbench init ./my-first-demo --duration 2
 cd my-first-demo
-# Optional: start your ordinary Claude session yourself, then edit src/scene.js.
+# Optional: start your usual Claude session yourself, then edit src/scene.js.
 npm run demo:render -- --note "First study"
 npm run demo:serve
 # Open http://127.0.0.1:4173. Ctrl-C stops the server.
 ```
 
-**Native Windows:** in PowerShell use `npm.cmd` and `demo-workbench.cmd` for
-the commands above (no execution-policy change). In cmd.exe use double quotes
-around the Git URL. macOS/Linux/WSL use the shell example as written. `main` is
-a moving branch; replace it with a reviewed full commit SHA to pin the install.
-No registry package or release tag is assumed. See [installation](docs/installation.md)
-for prerequisites, PATH/auth diagnostics, Windows examples, update/uninstall and
-offline artifacts. Nothing installs OS tools or logs in for you.
+**Windows:** in PowerShell, use `npm.cmd` and `demo-workbench.cmd` (no
+execution-policy change needed). In cmd.exe, put double quotes around the Git URL.
+macOS, Linux, and WSL can run the commands as written.
 
-With inputs (copies, never moves):
+`main` moves. To pin the install, swap it for a full commit SHA you've reviewed.
+There's no registry package or release tag. [Installation](docs/installation.md)
+covers prerequisites, PATH and auth problems, Windows examples, updating,
+uninstalling, and offline artifacts. The installer never installs OS tools or
+logs you in to anything.
+
+To start from a reference video and soundtrack (they're copied, not moved):
 
 ```sh
 demo-workbench init ./reference-demo \
@@ -40,121 +44,140 @@ demo-workbench init ./reference-demo \
   --title "My demo"
 ```
 
-Reference dimensions, rational FPS and duration are probed automatically. Optional
-`--width`, `--height`, `--fps`, `--duration` override render settings. Preserve the
-reference aspect by changing width and height together. Without inputs, the neutral
-RGB JavaScript scene works immediately, is silent, and explicitly has no reference.
-No Canvas/browser/native npm library is required for the starter. A simple custom
-renderer-to-H.264-MP4 contract allows richer frameworks later without gallery edits.
+Init reads the reference's dimensions, FPS (as a fraction), and duration. Override
+them with `--width`, `--height`, `--fps`, and `--duration`. Change width and height
+together to keep the reference's aspect ratio.
 
-### Independent generated projects
+Without inputs, you get a silent starter scene in plain JavaScript that renders
+right away. It doesn't need Canvas, a browser, or any native npm library. When you
+want a richer framework, any renderer that outputs H.264 MP4 plugs in without
+touching the gallery.
 
-The generated project vendors the runtime CLI/gallery and has a locked,
-zero-runtime-dependency package; deleting or updating the initializer installation
-does not change existing demos or break rendering. Prefer its `npm run demo:*`
-scripts for recurring work, not a newer global runtime. New generated CLIs also
-support `--version` and read-only `doctor [--json] [--tailnet]`, but never `init`;
-use the standalone installed CLI to initialize another project.
-Project init checks prerequisites, runs offline `npm ci` and a one-frame renderer
-smoke test, and initializes Git `main` with **no commit and no remote**. It never
-changes global Git identity or Claude settings. When the caller has an effective
-Git name/email (including repo-local config), init copies it into the new repo's
-local config. Otherwise it warns and leaves identity unset rather than inventing
-one. Its `CLAUDE.md` is task-local only.
+### Each project stands on its own
+
+A generated project carries its own copy of the CLI and gallery, with a locked
+package and no runtime dependencies. Updating or deleting the global install
+won't change or break existing demos. For day-to-day work, use the project's
+`npm run demo:*` scripts rather than a newer global CLI. The project's CLI also
+supports `--version` and read-only `doctor [--json] [--tailnet]`, but not `init`.
+Use the global CLI to create new projects.
+
+When you run init, it:
+
+- checks prerequisites
+- runs an offline `npm ci` and renders one test frame
+- creates a Git repo on `main` with **no commits and no remote**
+- copies your Git name and email into the repo's local config if you have them set
+  (including repo-local config). If you don't, it warns and leaves them unset
+  rather than making something up.
+
+It never touches your global Git identity or Claude settings. The project's
+`CLAUDE.md` only covers that project.
 
 ## Workflow and commands
 
-Inside the generated project:
+Inside a generated project:
 
 ```sh
 npm run demo:render -- --note "What changed"     # next immutable v001, v002, …
 npm run demo:compare -- v001                    # verify/locate archived packet
-npm run demo:review -- v001 --file review.json  # explicit one-time review import
-npm run demo:serve -- --port 4173               # loopback, public output only
-npm run demo:serve -- --tailnet --port 4173     # explicit private MagicDNS URL
-npm run demo:archive -- v001 ../v001-bundle     # NEW private evidence bundle
+npm run demo:review -- v001 --file review.json  # one-time review import
+npm run demo:serve -- --port 4173               # localhost, public output only
+npm run demo:serve -- --tailnet --port 4173     # private MagicDNS URL
+npm run demo:archive -- v001 ../v001-bundle     # new private evidence bundle
 ```
 
-Render builds the comparison automatically when a reference exists. Full-quality
-artifacts are separate from smaller web media. Evidence records common-timeline
-frame indices/timestamps, reference/candidate SHA-256s, source snapshots, Git state,
-settings and tool versions. A failed renderer cannot reuse old media; per-run scratch
-is retained with diagnostics and the public manifest is left unchanged. Changing
-reference, offsets, FPS or source requires a **new** version, never regrading an old
-video under new evidence. Old media is never overwritten. Missing reviews remain
-**not judged yet**, and scores/findings are imported only for matching artifact hashes.
+If there's a reference, render builds the side-by-side comparison automatically.
+Full-quality files are kept separate from the smaller web copies.
 
-Run chosen critics in the ordinary Claude session, with a stated budget. There is
-no critic API, scheduler, automatic quality guarantee or automatic agent launch.
-The generated [README](template/README.md) documents configuration, renderer contract,
-review JSON schema, alignment semantics, failure recovery and privacy in detail.
+Each version records its evidence: frame indices and timestamps on a shared
+timeline, SHA-256 hashes of the reference and the render, a snapshot of the
+source, Git state, settings, and tool versions.
+
+Versions are immutable:
+
+- A failed render can't reuse old media. Its scratch folder is kept with
+  diagnostics, and the public manifest stays as it was.
+- Changing the reference, offsets, FPS, or source means a **new** version. An old
+  video is never re-graded against new evidence, and old media is never overwritten.
+- A version with no review shows as **not judged yet**. Scores and findings only
+  import if they match the artifact's hashes.
+
+Critics run in your normal Claude session, on a budget you set. There's no critic
+API, scheduler, auto-launched agent, or quality guarantee. The generated
+[README](template/README.md) goes deep on configuration, the renderer contract, the
+review JSON schema, alignment, failure recovery, and privacy.
 
 ## Private tailnet access
 
-Every generated project inherits `npm run demo:serve -- --tailnet`. Localhost
-remains available and remains the default without that flag. Authenticate/connect
-Tailscale yourself first; the workbench never installs it or logs in for you.
+Every generated project gets `npm run demo:serve -- --tailnet`. Without the flag,
+it serves on localhost only, and localhost stays available with it. Set up and
+log in to Tailscale yourself first. The workbench never installs it or signs you in.
 
-- **Native Tailscale interface:** auto mode binds additional listeners to the exact
-  verified self Tailscale IPs, never `0.0.0.0`/`::` or a LAN interface.
-- **WSL + Windows Tailscale:** auto mode discovers the standard Windows
-  `tailscale.exe` when the Linux CLI is absent and creates one explicit private
-  HTTP Serve mapping to the loopback backend. Windows `curl.exe` first verifies
-  localhost forwarding reaches this exact demo. No netsh, firewall or WSL changes.
-- `--tailnet-mode direct|serve` selects a mode explicitly; `--tailnet-port 19417`
-  optionally differs from the local `--port`. `--tailscale PATH` selects an already
-  installed CLI, including a Windows executable whose path contains spaces.
+- **Native Tailscale:** auto mode adds listeners on your machine's verified
+  Tailscale IPs only, never `0.0.0.0`, `::`, or a LAN interface.
+- **WSL with Tailscale on Windows:** if the Linux CLI is missing, auto mode finds
+  the standard Windows `tailscale.exe` and creates one private HTTP Serve mapping
+  to the localhost backend. It uses Windows `curl.exe` to confirm localhost
+  forwarding reaches this demo first. It doesn't change netsh, the firewall, or WSL.
+- `--tailnet-mode direct|serve` picks the mode. `--tailnet-port 19417` uses a
+  different port from `--port`. `--tailscale PATH` points at a CLI you already
+  have, including a Windows path with spaces.
 
-The command prints `http://<verified-self-MagicDNS-name>:<port>/` **only after a
-same-machine route probe succeeds**. HTTP runs over the encrypted tailnet, not
-public Funnel. Access also depends on your tailnet ACLs and client connectivity;
-a same-machine check is not proof from a second device.
+The tailnet URL (`http://<your-MagicDNS-name>:<port>/`) only prints **after a
+probe from the same machine succeeds**. Traffic is HTTP inside the encrypted
+tailnet, not public Funnel. Whether another device can reach it still depends on
+your ACLs and that device's connection; a check from the same machine doesn't
+prove it.
 
-Occupied mappings/backend ports are refused, not replaced. Ctrl-C/SIGTERM closes
-listeners and attempts cleanup of its own mapping. After a crash or refused
-cleanup, run:
+If a mapping or backend port is already taken, the command refuses instead of
+replacing it. Ctrl-C or SIGTERM closes the listeners and tries to remove the
+mapping it created. If it crashed or couldn't clean up, run:
 
 ```sh
 npm run demo:serve -- --stop-tailnet
 ```
 
-See the generated [README](template/README.md#private-tailnet-serving) for the
-mapping ownership, locking, external-administrator constraints and recovery rules.
+The generated [README](template/README.md#private-tailnet-serving) covers mapping
+ownership, locking, admin-managed setups, and recovery.
 
-## Reused gallery, not a new design
+## The gallery is reused from Love
 
-`template/site/` is extracted/generalized from approved Love source commit
-`f4b701baa1030b08c677f4e6294ff8ecf777e985`, using read-only `git show`. It retains the
-cool paper `#EEEEEB`, ink `#151413`, red focus/cursor system, responsive showcase,
-player tabs, expandable history, synchronized two-version comparison/scrubbing,
-lightbox, score display and dark-mode toggle. Titles, inputs, aspect ratios, media
-paths and scores now come from one atomic manifest. The page refreshes when data
-changes while idle; during playback/open reviews it offers a refresh button.
+`template/site/` is pulled from approved Love commit
+`f4b701baa1030b08c677f4e6294ff8ecf777e985` (read-only `git show`) and generalized.
+It keeps the paper `#EEEEEB` and ink `#151413` colors, the red focus and cursor,
+the responsive showcase, player tabs, expandable history, synced side-by-side
+comparison and scrubbing, lightbox, scores, and dark mode. Titles, inputs, aspect
+ratios, media paths, and scores now all come from one manifest that's written
+atomically. The page refreshes itself when data changes while idle. If something's
+playing or a review is open, it shows a refresh button instead.
 
-No historical scores, Love media, conversation/replay/making-of pages or font files
-are shipped. No external font/network requests. System sans/mono fallbacks replace
-font services. The original has no root license file; this is authorized **local
-reuse**, not an open-source redistribution grant. See [NOTICE.md](NOTICE.md).
+It ships without Love's old scores, media, conversation, replay, or making-of
+pages, and without font files. It makes no external font or network requests and
+falls back to system sans and mono fonts. Love has no license file, so this is
+authorized **local reuse**, not an open-source license. See [NOTICE.md](NOTICE.md).
 
 ## Safety boundaries
 
-- Refuses every existing init target, including empty directories and dangling
-  symlinks. Preconditions are checked before staging. A partial failure retains
-  staging/diagnostics and any partial target; there is no destructive resume mode.
-- One conservative render at a time per project; no queues or parallel frame swarm.
-  Rendering does not expose a server or upload anything.
-- Server defaults to `127.0.0.1`; explicit tailnet access uses verified self
-  addresses or a private Serve mapping. Only concrete Host/Origin authorities
-  for those endpoints are accepted; forwarded hosts are never trusted. Generated
-  routes retain Range/HEAD/MIME, traversal and symlink protections. Source, .git,
-  raw reference inputs and private runs are never served.
-- Public metadata includes render notes and imported findings. Keep secrets out of
-  these fields. Archive bundles include private source/inputs: do not publish them.
-- No OS installs, Wi-Fi changes, public bind/Funnel, account integrations or global
-  configuration. The explicit tailnet option changes only its owned Serve mapping
-  when that mode is needed. Public deployment remains out of scope.
-- Use trusted local scene/renderer code; a renderer is arbitrary code you run, not
-  a sandbox. Do not allow untrusted writers into a project while serving/rendering.
+- Init refuses any target that already exists, including empty directories and
+  broken symlinks. It checks preconditions before staging. If it fails partway,
+  it keeps the staging folder, diagnostics, and whatever it created. There's no
+  resume mode that could delete things.
+- One render at a time per project. No queues, no parallel frame workers.
+  Rendering never starts a server or uploads anything.
+- The server binds to `127.0.0.1` by default. With `--tailnet`, it only uses your
+  verified Tailscale addresses or a private Serve mapping. It only accepts Host
+  and Origin values for those exact endpoints and never trusts forwarded hosts.
+  Routes keep Range, HEAD, MIME, path traversal, and symlink protections. Source,
+  `.git`, raw reference inputs, and private runs are never served.
+- Render notes and imported findings are public metadata, so keep secrets out of
+  them. Archive bundles include your private source and inputs. Don't publish them.
+- No OS installs, Wi-Fi changes, public binding or Funnel, account integrations,
+  or global config changes. With `--tailnet`, the only thing it changes is its own
+  Serve mapping, and only in serve mode. Public deployment is out of scope.
+- A renderer is arbitrary code that you run, not a sandbox. Only use scene and
+  renderer code you trust, and don't let untrusted people write to a project
+  while it's serving or rendering.
 
 ## Verification
 
@@ -164,40 +187,48 @@ npm run check
 npm test
 ```
 
-The [hosted matrix](.github/workflows/test.yml) runs on real macOS/Linux/native
-Windows with Node 22/24, plus Linux Node 18. It also installs the exact Git source
-commit using the runner's existing short-lived read-only credential, never a
-credential in a URL. WSL and its Windows localhost bridge have a separate test;
-non-WSL runners explicitly skip that bridge test. No hosted check claims live
-second-device access. See actual CI results for observed platform outcomes.
+The [CI matrix](.github/workflows/test.yml) runs on real macOS, Linux, and native
+Windows with Node 22 and 24, plus Linux on Node 18. It also installs from the exact
+Git commit using the runner's short-lived read-only credential, never a credential
+in a URL. WSL's Windows localhost bridge has its own test, which other runners skip.
+No CI check covers access from a second device. Check the actual CI runs for
+per-platform results.
 
-Tests create synthetic fixtures in isolated temporary directories and exercise:
-actual isolated-prefix tarball and Git installation, native command shims,
-version/aggregate read-only doctor, spaces/Unicode, upgrade/uninstall independence; source-path independence; two reference aspect/FPS
-classes (4:3 at 24000/1001 and 16:9 at 60); different source/output FPS; audio mux;
-new/pending/imported review states; two versions with stable old media and review
-hashes; failed/non-producing render isolation; archive/export; missing dependencies
-and inputs; existing/symlink-target refusal; byte-range seeking, MIME, HEAD,
-loopback binding and privacy. Tailnet tests cover verified identity, direct-address
-selection, generated CLI inheritance, missing/offline tools, mapping/port conflicts,
-exact cleanup, overlapping lifecycle operations and Host/Origin/Range/privacy
-behavior through a proxy prefix. Regression checks also cover fresh-checkout
-bootstrap, runtime-only command dispatch and rejection of non-MP4 containers.
-DOM-based gallery checks exercise pending scores, media selection and local-only
-links/resources; they do not decode or play media.
-`DEMO_KEEP_TEST_OUTPUT=1 npm test` retains the end-to-end fixture directory and
-prints its path for manual inspection.
+Tests build synthetic fixtures in isolated temp directories and cover:
 
-**Visual layout, interactive playback, dark mode, and real browser seeking remain
-unverified** by these automated checks. DOM, HTTP, media-probe and script-syntax
-checks are not substitutes for verification in a real browser.
-A generated project was tested through the actual Windows Tailscale Serve route
-from WSL using MagicDNS: local/tailnet HTTP 200, MP4 Range 206, private paths 404,
-untrusted Host/Origin 403, and exact restoration of existing Serve configuration
-on shutdown. **No second-device confirmation** was performed; tailnet client ACLs,
-DNS and connectivity still need checking from the intended device.
+- installing from a tarball and from Git into an isolated prefix, native command
+  shims, `--version` and read-only `doctor`, paths with spaces and Unicode, and
+  upgrading or uninstalling without breaking existing projects
+- two reference shapes (4:3 at 24000/1001 FPS and 16:9 at 60), different source
+  and output FPS, and audio muxing
+- new, pending, and imported review states; two versions with stable old media
+  and review hashes; failed renders that produce nothing
+- archive and export, missing dependencies and inputs, refusing existing or
+  symlinked targets
+- byte-range seeking, MIME, HEAD, localhost binding, and privacy
+- tailnet: verified identity, picking direct addresses, the generated CLI
+  inheriting the flag, missing or offline tools, mapping and port conflicts, exact
+  cleanup, overlapping start and stop, and Host/Origin/Range/privacy behind a
+  proxy prefix
+- fresh-checkout bootstrap, runtime-only command dispatch, and rejecting non-MP4
+  containers
+- DOM checks on the gallery for pending scores, media selection, and local-only
+  links (they don't decode or play media)
 
-Limits: single local process, no crash-resume automation, one review import per
-version, silent comparison clips, manual temporal offsets (not optical alignment),
-and a simple CPU starter rather than a high-performance 4K animation framework.
-No source project or private reference files are needed at runtime or in tests.
+`DEMO_KEEP_TEST_OUTPUT=1 npm test` keeps the end-to-end fixture folder and prints
+its path so you can poke at it.
+
+**Not verified by the automated tests:** visual layout, playback, dark mode, and
+seeking in a real browser. DOM, HTTP, media-probe, and syntax checks don't replace
+trying it in a browser.
+
+One generated project was tested by hand through the real Windows Tailscale Serve
+route from WSL over MagicDNS. Local and tailnet requests returned 200, MP4 range
+requests 206, private paths 404, and untrusted Host/Origin 403, and the existing
+Serve config was restored exactly on shutdown. It was **not tested from a second
+device**, so check ACLs, DNS, and connectivity from the device you plan to use.
+
+**Limits:** one local process, no automatic crash recovery, one review import per
+version, silent comparison clips, manual time offsets (no optical alignment), and a
+simple CPU starter scene rather than a fast 4K animation framework. Nothing from a
+source project or private reference files is needed at runtime or in tests.
