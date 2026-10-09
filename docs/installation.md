@@ -2,8 +2,9 @@
 
 The CLI uses npm's ordinary `bin` mechanism. There is no bootstrap service,
 postinstall hook, OS installer, registry package, or automatic authentication.
-The current package version is **0.2.0**; `demo-workbench --version` reports what
-is actually installed. This repository is currently private. Future public
+[package.json](../package.json) owns the package version;
+`demo-workbench --version` (or `-v`) reports what is actually installed.
+This repository is currently private. Future public
 access will use the same Git installation mechanism without the private-access
 prerequisite; npm publication and redistribution rights are separate work.
 
@@ -36,7 +37,7 @@ prerequisite; npm publication and redistribution rights are separate work.
 One command, from any directory; no persistent source checkout is needed.
 The `main` branch below is moving source, **not** a published release/tag.
 For a reproducible or reviewed installation, replace `#main` with the approved
-full commit SHA. Do not assume a `v0.2.0` Git tag or npm package exists.
+full commit SHA. Do not assume a release tag or npm registry package exists.
 
 **macOS, Linux and WSL (sh/bash/zsh):**
 
@@ -125,8 +126,8 @@ required check or argument failed. Missing Git identity and an unknown default
 font are warnings. Each external probe has a five-second timeout and bounded
 output. npm on Windows is run via its standard `npm-cli.js` beside `npm.cmd`,
 without shell interpolation. Nonstandard npm batch-only wrappers are diagnosed;
-use a standard Node/npm installation. Custom batch renderers should instead use
-an executable, or `node` with a script argument; arbitrary shell text is not run.
+use a standard Node/npm installation. For custom renderer execution constraints,
+see the [renderer contract](../template/README.md#renderer-to-mp4-contract).
 
 Only explicit `doctor --tailnet` requires Tailscale. It reads version, status,
 self identity/MagicDNS and Serve help; it never logs in, starts a listener,
@@ -168,14 +169,15 @@ their original runtime; no silent migration or automatic runtime updater exists.
 
 ## Offline/local artifact alternative
 
-From a trusted source checkout, `npm pack --ignore-scripts` produces
-`demo-workbench-0.2.0.tgz`. Install that artifact with:
+From a trusted source checkout, run `npm pack --ignore-scripts`. It prints the
+tarball filename derived from the package metadata. Replace `PATH-TO-TARBALL.tgz`
+below with that actual artifact path (and quote it if it contains spaces):
 
 ```sh
-npm install --global --offline --ignore-scripts --omit=dev --no-audit --no-fund ./demo-workbench-0.2.0.tgz
+npm install --global --offline --ignore-scripts --omit=dev --no-audit --no-fund "./PATH-TO-TARBALL.tgz"
 ```
 
-Use `npm.cmd` in PowerShell. Package version changes change the filename. This
+Use `npm.cmd` in PowerShell. This
 is a real packaged copy, not `npm link` or a global directory dependency that
 can break when a disposable checkout is removed. Keep NOTICE with the artifact;
 private local installation is not permission to redistribute it publicly.

@@ -87,8 +87,13 @@ Audio is padded/trimmed to the configured duration. Without --audio, renders are
 
 Default: `node src/render.js OUTPUT.mp4 CONFIG.json`. Configure `renderer.command`
 and `renderer.args` (an argv array, no shell) with standalone `{output}` and
-`{config}` placeholders. It runs from the project root with
-`DEMO_RENDER_WORKERS=1`. Agents may use another installed/local renderer; list and
+`{config}` placeholders. Use an executable on PATH or an explicit path (for
+example, `./tools/renderer`). Executables retain native OS/shebang semantics;
+a `.js`, `.mjs` or `.cjs` suffix does not select Node. For portable JavaScript
+renderers, set `renderer.command` to `node` and put the script path in
+`renderer.args`. Native Windows `.cmd`/`.bat` renderers are not supported; use
+an executable or an explicit Node script instead. It runs from the project root
+with `DEMO_RENDER_WORKERS=1`. Agents may use another installed/local renderer; list and
 lock its own dependencies in package.json if needed. The workbench never installs
 new renderer dependencies silently.
 

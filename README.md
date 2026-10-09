@@ -8,8 +8,9 @@ remote creation, agent service or public deployment.
 
 ## Quick start
 
-With **Node >=18, npm, Git, FFmpeg and ffprobe** already installed, install once
-from any directory (the repository currently requires existing Git access):
+With the [prerequisites](docs/installation.md#prerequisites) already installed,
+install once from any directory (the repository currently requires existing Git
+access):
 
 ```sh
 npm install --global --ignore-scripts --omit=dev --no-audit --no-fund 'git+https://github.com/EClinick/demo-workbench.git#main'
@@ -71,7 +72,7 @@ npm run demo:compare -- v001                    # verify/locate archived packet
 npm run demo:review -- v001 --file review.json  # explicit one-time review import
 npm run demo:serve -- --port 4173               # loopback, public output only
 npm run demo:serve -- --tailnet --port 4173     # explicit private MagicDNS URL
-npm run demo:archive -- v001 /tmp/v001-bundle    # NEW private evidence bundle
+npm run demo:archive -- v001 ../v001-bundle     # NEW private evidence bundle
 ```
 
 Render builds the comparison automatically when a reference exists. Full-quality
