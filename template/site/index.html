@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="description" content="Local demo versions, aligned comparisons and explicit reviews.">
+<title>Demo workbench</title>
+<link rel="stylesheet" href="theme.css">
+<script>document.documentElement.classList.add('js')</script>
+<script src="theme.js" defer></script>
+<style>
+.wrap{max-width:1180px;margin:0 auto;padding:0 var(--gutter)}
+.hero{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;padding:44px 0 8px}
+@media (min-width:1000px){.hero{padding:56px 0 12px}}
+/* The featured media gets the full column; each mode supplies its own aspect ratio. */
+.screen video{object-fit:contain}
+#featplayer{margin-top:0}
+h1{font-weight:900;font-size:var(--t-7);line-height:.92;letter-spacing:-.05em;margin:0 0 18px}
+.lede{font-size:var(--t-3);line-height:1.5;margin:0 0 10px;max-width:36ch}
+.muted,.note{color:var(--graphite);font-size:var(--t-1)}
+h2{font-weight:900;font-size:var(--t-5);letter-spacing:-.03em;line-height:1.1;margin:64px 0 8px}
+h3{font-weight:900;font-size:var(--t-2);margin:20px 0 0}
+p{margin:0 0 12px}
+.mono{font-family:var(--font-mono);font-size:.85em}
+.screen{background:var(--frame);border-radius:10px;overflow:hidden;color:#E7E4DD}
+.screen .feat-title{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 14px;font-size:var(--t-1)}
+.latest-tag{font-weight:900;color:#fff}
+.screen .warn{color:#A9A49B;font-size:var(--t-0)}
+video{display:block;width:100%;height:auto;aspect-ratio:var(--video-aspect,16/9);background:#000}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0;margin:12px 0 0;border-top:1px solid var(--rule)}
+.meta div{padding:10px 0;border-bottom:1px solid var(--rule);padding-right:14px}
+.meta dt{font-size:var(--t-0);color:var(--graphite)}
+.meta dd{margin:2px 0 0;font-size:var(--t-1);font-weight:700;line-height:1.45;word-break:break-word}
+dl{margin:0}
+.how{display:grid;gap:14px;align-items:center;background:var(--frame);color:#E7E4DD;border-radius:10px;padding:20px 22px;margin:36px 0 0}
+@media (min-width:800px){.how{grid-template-columns:minmax(0,1fr) auto}}
+.how p{margin:0;font:600 .95rem/1.6 var(--font-mono)}
+.how .caret{color:#8E8A82}
+.how a{color:#fff;font-weight:900;font-size:var(--t-2)}
+.card{background:var(--paper-raised);border:1px solid var(--rule);border-radius:10px}
+.player{overflow:hidden;margin-top:16px;background:var(--frame);border:0}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:0;list-style:none;margin:16px 0 0;counter-reset:s}
+.shots li{counter-increment:s;padding:12px 14px;font-size:var(--t-1);color:var(--graphite)}
+.shots li::before{content:counter(s);font-weight:900;color:var(--ink);margin-right:10px;font-variant-numeric:tabular-nums}
+.shots b{color:var(--ink)}
+.table-wrap{overflow-x:auto;padding:4px 0;margin-top:12px}
+table{border-collapse:collapse;width:100%;min-width:480px}
+th,td{padding:10px 14px;text-align:right;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:var(--t-0);color:var(--graphite);font-weight:700}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums}
+td.up{color:var(--ink);font-weight:900}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--ink);opacity:.35;vertical-align:middle;margin-left:8px}
+tr.pending td{color:var(--graphite);font-style:italic}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:16px}
+.gallery button{min-height:120px;padding:0;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--frame);cursor:zoom-in;position:relative;display:block}
+.gallery img{display:block;width:100%;height:auto}
+.gallery span{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.7);color:#fff;border-radius:6px;padding:1px 8px;font-size:var(--t-0)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:var(--t-1);color:var(--graphite)}
+.legend b{color:var(--ink)}
+#lb{position:fixed;inset:0;background:rgba(10,10,10,.94);display:none;align-items:center;justify-content:center;z-index:10;padding:12px}
+#lb.open{display:flex}
+#lb img{max-width:100%;max-height:calc(100vh - 80px);object-fit:contain;border-radius:6px}
+#lb .bar2{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:#ddd;font-size:var(--t-1)}
+#lb button{position:absolute;background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:999px;width:44px;height:44px;font-size:1.3rem;cursor:pointer}
+#lb .x{top:12px;right:12px} #lb .p{left:10px;top:50%} #lb .n{right:10px;top:50%}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--paper);text-decoration:none;border:0;border-radius:6px;padding:10px 18px;min-height:44px;font:700 var(--t-1) var(--font-sans);cursor:pointer}
+.btn.alt{background:var(--paper-raised);color:var(--ink);border:1px solid var(--rule)}
+.chips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:var(--t-0);font-weight:700;font-variant-numeric:tabular-nums;background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:0 8px;color:var(--ink)}
+.chip.mean{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.chip.none{color:var(--graphite);font-style:italic;background:transparent}
+.versions{display:grid;gap:10px;margin-top:16px}
+.ver{scroll-margin-top:16px}
+.ver>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:14px 16px}
+.ver>summary::-webkit-details-marker{display:none}
+.ver>summary::before{content:"";width:0;height:0;border-left:7px solid var(--ink);border-top:5px solid transparent;border-bottom:5px solid transparent;transition:transform .15s}
+.ver[open]>summary::before{transform:rotate(90deg)}
+.ver .vl{font-weight:900;font-size:var(--t-3)}
+.ver .vsub{color:var(--graphite);font-size:var(--t-1)}
+.ver .grow{flex:1 1 200px;min-width:0}
+.ver .body{padding:0 16px 16px;border-top:1px solid var(--rule);overflow-wrap:anywhere}
+.ver .body video{border-radius:8px;margin-top:16px;max-height:70vh;object-fit:contain;background:#000}
+.ver ul.cl{margin:12px 0 0;padding-left:20px;color:var(--graphite);font-size:var(--t-1)}
+.ver ul.cl li{margin:2px 0} .ver ul.cl li:first-child{color:var(--ink)}
+.ver.latest{border-color:var(--ink)}
+.tabs{display:flex;gap:4px;padding:8px 8px 0;background:var(--frame);border-bottom:1px solid #2E2B28}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;color:#A9A49B;font:700 var(--t-1) var(--font-sans);padding:8px 14px;cursor:pointer}
+.tabs button[aria-selected=true]{color:#fff;border-bottom-color:var(--signal)}
+.tabs .hint{margin-left:auto;align-self:center;color:#A9A49B;font-size:var(--t-0);padding-right:8px}
+.ptabs{margin-top:16px;border-radius:8px;overflow:hidden;background:var(--frame)}
+.ptabs video{margin-top:0!important;border-radius:0!important}
+.finalbox{padding:16px;margin-top:16px}
+.finalbox .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+@media (max-width:520px){.tabs .hint{display:none}}
+.cmp{padding:16px;margin-top:16px}
+.cmp-pick{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cmp-pick label{display:block;font-size:var(--t-1);font-weight:700;margin-bottom:4px}
+select{width:100%;background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:8px 10px;min-height:44px;font:500 var(--t-1) var(--font-sans)}
+.cmp-vids{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.cmp-vids video{border-radius:6px}
+.cmp-bar{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.cmp-bar input[type=range]{flex:1 1 160px;min-width:120px;accent-color:var(--signal)}
+.cmp-bar .mono{color:var(--graphite);min-width:7.5em}
+.cmp-bar .btn{padding:6px 16px}
+audio{width:100%;max-width:520px;margin-top:8px}
+.err{color:var(--signal-text)}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#showcase">Skip to the showcase</a>
+<header class="site-head">
+  <a class="brand" href="index.html">demo workbench.</a>
+  <nav class="site-nav" aria-label="Site"><a href="index.html" aria-current="page">Showcase</a><a href="#versions">Versions</a><button id="theme" type="button">Dark mode</button></nav>
+</header>
+<main class="wrap" id="showcase" tabindex="-1">
+<section class="hero" aria-labelledby="title">
+  <div>
+    <h1 id="title"><span id="project-title">Demo workbench</span><span class="cursor" aria-hidden="true"></span></h1>
+    <p class="lede" id="description">Your renders, comparisons and reviews in one place.</p>
+    <p class="muted" id="status">Loading local versions…</p>
+    <button class="btn alt" id="refresh" hidden type="button">New gallery data available — refresh</button>
+  </div>
+  <div class="screen">
+    <div class="feat-title"><span class="latest-tag" id="feat-tag">latest comparison</span><span class="warn">Comparison: Reference left, Candidate right. Playback may contain flashing imagery.</span></div>
+    <section class="player" id="featplayer" aria-label="Latest version side-by-side comparison"></section>
+  </div>
+</section>
+
+<dl class="meta" id="meta" aria-label="Version info">
+  <div><dt>Commit</dt><dd class="mono" id="m-hash">…</dd></div>
+  <div><dt>Message</dt><dd id="m-msg">…</dd></div>
+  <div><dt>Output SHA-256</dt><dd class="mono" id="m-output">…</dd></div>
+  <div><dt>Rendered</dt><dd id="m-rdate">…</dd></div>
+  <div><dt>Video</dt><dd id="m-vid">…</dd></div>
+  <div><dt>Judge score</dt><dd id="m-score">…</dd></div>
+</dl>
+
+<section id="originalsec" hidden>
+  <h2>Reference video</h2>
+  <div class="card player"><video id="reference" controls playsinline preload="metadata" muted></video></div>
+  <p class="note">Lightweight, silent reference preview for the latest archived render. Originals remain in the private run archive.</p>
+</section>
+
+<section id="finalsec" hidden>
+  <h2>Final result</h2>
+  <div class="card finalbox" id="final"></div>
+  <p class="note">Full-quality render, kept separately from the lightweight web preview.</p>
+</section>
+
+<h2>Latest aligned pairs</h2>
+<div class="legend"><span><b>Left</b> is Reference</span><span><b>Right</b> is Candidate</span><span>Sample times and frame indices are recorded in the private packet. Select a pair to enlarge.</span></div>
+<div class="gallery" id="gallery"></div>
+
+<h2>Compare versions</h2>
+<p class="note">Pick any two versions and play them side by side, synced. Left is older by default.</p>
+<section class="card cmp" id="cmp" hidden>
+  <div class="cmp-pick">
+    <div><label for="cmp-a">Left</label><select id="cmp-a"></select></div>
+    <div><label for="cmp-b">Right</label><select id="cmp-b"></select></div>
+  </div>
+  <div class="cmp-vids">
+    <video id="cv-a" playsinline preload="none" muted></video>
+    <video id="cv-b" playsinline preload="none"></video>
+  </div>
+  <div class="cmp-bar">
+    <button class="btn" id="cmp-play" type="button">Play</button>
+    <input id="cmp-seek" type="range" min="0" max="1000" value="0" aria-label="Seek both videos">
+    <span class="mono" id="cmp-time">0.0 / 0.0 s</span>
+    <button class="btn alt" id="cmp-audio" type="button" aria-pressed="false">Audio: right</button>
+    <button class="btn alt" id="cmp-swap" type="button">Swap</button>
+  </div>
+</section>
+
+<h2>Version history</h2>
+<p class="note">Every iteration, newest first. Open one to load its video and comparison sheets.</p>
+<div class="versions" id="versions"></div>
+
+<h2>Score progress</h2>
+<p>Explicitly imported critic scores out of 10. New outputs stay pending until reviewed.</p>
+<p class="note">Scores are subjective. Compare rounds only when their rubric, reviewers and evidence are comparable. Findings appear inside each version.</p>
+<section class="card table-wrap"><table id="scores"></table></section>
+</main>
+<footer class="site-foot"><span>Local demo workbench. No trackers, external fonts or analytics.</span><span id="gen"></span></footer>
+
+<div id="lb" role="dialog" aria-modal="true" aria-label="Comparison sheet">
+  <button class="x" type="button" aria-label="Close">&times;</button>
+  <button class="p" type="button" aria-label="Previous">&lsaquo;</button>
+  <img alt="">
+  <button class="n" type="button" aria-label="Next">&rsaquo;</button>
+  <div class="bar2"></div>
+</div>
+
+<script>
+(function(){
+  var $ = function(id){return document.getElementById(id)};
+  // Source provenance is local; no project-specific external commit links.
+  function fmt(d){ if(!d) return '—'; var x = new Date(d); return isNaN(x) ? d : x.toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}); }
+  function esc(s){ var e=document.createElement('span'); e.textContent=s==null?'':String(s); return e.innerHTML.replace(/"/g, '&quot;'); }
+  function mean(a){ return a.reduce(function(x,y){return x+y},0)/a.length; }
+  function el(tag, cls, html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+  function vsrc(v, p){ return p + (v.v ? '?v=' + v.v : ''); }
+  function hashLink(v){ return v.hash ? '<span class="mono">' + esc(v.hash.slice(0,12)) + '</span>' + (v.dirty ? ' (+ uncommitted)' : '') : 'uncommitted source snapshot'; }
+  function scoreChips(v){
+    if(!v.scores) return '<span class="chip none">not judged yet</span>';
+    return '<span class="chips">' + v.scores.map(function(x){return '<span class="chip">' + x.toFixed(1) + '</span>'}).join('') + '<span class="chip mean">avg ' + mean(v.scores).toFixed(1) + '</span></span>';
+  }
+  function dur(v){ return (v.resolution||'') + (v.duration ? ' · ' + v.duration.toFixed(1) + ' s' : '') + (v.size ? ' · ' + (v.size/1048576).toFixed(1) + ' MB' : ''); }
+
+  // ---- lightbox (shared by every gallery)
+  var lb = $('lb'), im = lb.querySelector('img'), cur = 0, srcs = [], cap = '', previousFocus = null;
+  function show(i){ cur = (i + srcs.length) % srcs.length; im.src = srcs[cur]; lb.querySelector('.bar2').textContent = cap + ' · sheet ' + (cur+1) + ' / ' + srcs.length + '  ·  left: Reference, right: Candidate'; }
+  function openLB(list, i, caption){ previousFocus = document.activeElement; srcs = list; cap = caption; show(i); lb.classList.add('open'); document.body.style.overflow='hidden'; lb.querySelector('.x').focus(); }
+  function closeLB(){ lb.classList.remove('open'); document.body.style.overflow=''; if(previousFocus) previousFocus.focus(); }
+  lb.querySelector('.x').onclick = closeLB;
+  lb.querySelector('.p').onclick = function(e){ e.stopPropagation(); show(cur-1); };
+  lb.querySelector('.n').onclick = function(e){ e.stopPropagation(); show(cur+1); };
+  lb.onclick = function(e){ if(e.target === lb) closeLB(); };
+  im.onclick = closeLB;
+  document.addEventListener('keydown', function(e){
+    if(!lb.classList.contains('open')) return;
+    if(e.key==='Escape') closeLB(); else if(e.key==='ArrowLeft') show(cur-1); else if(e.key==='ArrowRight') show(cur+1);
+    else if(e.key==='Tab'){
+      var controls = Array.from(lb.querySelectorAll('button'));
+      var next = (controls.indexOf(document.activeElement) + (e.shiftKey ? -1 : 1) + controls.length) % controls.length;
+      e.preventDefault(); controls[next].focus();
+    }
+  });
+  function gallery(container, v){
+    var list = (v.sheets||[]).map(function(p){ return vsrc(v, p); });
+    list.forEach(function(src, i){
+      var b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = '<img loading="lazy" src="' + esc(src) + '" alt="' + esc(v.label) + ' comparison sheet ' + (i+1) + ': reference on the left, render on the right"><span>' + (i+1) + ' / ' + list.length + '</span>';
+      b.onclick = function(){ openLB(list, i, v.label); };
+      container.appendChild(b);
+    });
+  }
+
+  // Render / Side-by-side tabs over one lazily-loaded <video>. Side-by-side is only fetched on first click.
+  function playerTabs(host, v, comparisonFirst){
+    var vid = el('video'); vid.controls = true; vid.playsInline = true; vid.preload = 'metadata';
+    var modes = [{k:'render', t:'Render', src:v.video, ar:v.width + '/' + v.height}];
+    if(v.sidebyside) modes.push({k:'sbs', t:'Side-by-side', src:v.sidebyside, ar:v.comparisonAspect});
+    var cur = null, tabs = null;
+    function set(m, keep){
+      var t = keep ? vid.currentTime : 0, playing = keep && !vid.paused;
+      cur = m; vid.style.aspectRatio = m.ar; vid.src = vsrc(v, m.src);
+      if(keep && t){ vid.addEventListener('loadedmetadata', function f(){ vid.removeEventListener('loadedmetadata', f); vid.currentTime = t; if(playing) vid.play().catch(function(){}); }); }
+      if(tabs) Array.prototype.forEach.call(tabs.querySelectorAll('button'), function(b){ b.setAttribute('aria-selected', b.dataset.k === m.k ? 'true' : 'false'); });
+    }
+    if(modes.length > 1){
+      tabs = el('div', 'tabs'); tabs.setAttribute('role', 'tablist');
+      modes.forEach(function(m){
+        var b = el('button', null, esc(m.t)); b.type = 'button'; b.dataset.k = m.k; b.setAttribute('role', 'tab');
+        b.onclick = function(){ if(cur !== m) set(m, true); };
+        tabs.appendChild(b);
+      });
+      tabs.appendChild(el('span', 'hint', 'Reference left, Candidate right'));
+      host.appendChild(tabs);
+    }
+    host.appendChild(vid);
+    set(comparisonFirst && modes.length > 1 ? modes[1] : modes[0], false);
+    return vid;
+  }
+
+  function getJSON(u){ return fetch(u + '?_=' + Date.now(), {cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }); }
+
+  getJSON('data.json').then(function(data){
+    var vers = data.versions;
+    document.title = data.title;
+    $('project-title').textContent = data.title;
+    $('description').textContent = data.description;
+    $('status').textContent = vers.length ? vers.length + ' archived version' + (vers.length === 1 ? '' : 's') + '. Each output has its own evidence and review.' : 'No renders yet. Edit src/scene.js, then run npm run demo:render.';
+    $('refresh').onclick = function(){ location.reload(); };
+    setInterval(function(){ getJSON('data.json').then(function(next){
+      if(next.generated === data.generated) return;
+      // Refresh automatically while idle; never interrupt playback or an open review.
+      var active = Array.from(document.querySelectorAll('video')).some(function(v){ return !v.paused; }) || document.querySelector('details[open]') || lb.classList.contains('open');
+      if(active) $('refresh').hidden = false; else location.reload();
+    }).catch(function(){}); }, 5000);
+    if(!vers.length){
+      $('feat-tag').textContent = 'No render yet';
+      document.querySelectorAll('#meta dd').forEach(function(d){ d.textContent = '—'; });
+      $('m-msg').textContent = 'Ready for your first scene';
+      $('gallery').textContent = 'Aligned pairs appear after a render with a reference.';
+      $('versions').textContent = 'Your first render will be v001.';
+      return;
+    }
+    var top = vers[0];
+    document.documentElement.style.setProperty('--video-aspect', top.width + '/' + top.height);
+    if(top.reference){ $('originalsec').hidden = false; $('reference').src = top.reference; }
+
+    // ---- featured (latest)
+    $('feat-tag').textContent = top.label + (top.sidebyside ? ', the latest comparison' : ', the latest render');
+    playerTabs($('featplayer'), top, true);
+    if(!top.sidebyside) $('gallery').textContent = 'No reference for this version. Add a reference in demo.json and render a new version to compare.';
+    $('m-hash').innerHTML = hashLink(top);
+    $('m-msg').textContent = top.subject || '';
+    $('m-output').textContent = top.outputSha256;
+    $('m-rdate').textContent = fmt(top.render_date);
+    $('m-vid').textContent = dur(top);
+    $('m-score').innerHTML = scoreChips(top);
+    if(data.generated) $('gen').textContent = 'Site data refreshed ' + fmt(data.generated) + '.';
+    gallery($('gallery'), top);
+
+    $('final').innerHTML = '<p>' + esc(top.label) + ' · ' + esc(top.resolution) + '</p><div class="btnrow"><a class="btn" download href="' + esc(top.download) + '">Download full-quality render</a>' + (top.sidebyside ? '<a class="btn alt" download href="' + esc(top.sidebyside) + '">Download labelled comparison</a>' : '') + '</div>';
+    $('finalsec').hidden = false;
+
+    // ---- version history
+    var box = $('versions');
+    // Keep direct version fragments working without forcing a second page scroll.
+    function openFromHash(){ var d = location.hash && document.getElementById(location.hash.slice(1)); if(d && d.tagName === 'DETAILS'){ d.open = true; } }
+    window.addEventListener('hashchange', openFromHash);
+    vers.forEach(function(v, i){
+      var d = el('details', 'card ver' + (i===0 ? ' latest' : ''));
+      d.id = 'ver-' + v.label;
+      var cl = (v.changelog||[]);
+      d.innerHTML = '<summary><span class="vl">' + esc(v.label) + (i===0 ? ', latest' : '') + '</span>' +
+        '<span class="vsub">' + esc(fmt(v.render_date || v.commit_date)) + ' · ' + hashLink(v) + '</span>' +
+        '<span class="grow"></span>' + scoreChips(v) + '</summary>';
+      var loaded = false;
+      d.addEventListener('toggle', function(){
+        if(!d.open || loaded) return; loaded = true;
+        var b = el('div', 'body');
+        b.innerHTML = '<p style="margin:16px 0 0"><b>' + esc(v.subject||'') + '</b></p>';
+        if(cl.length) b.innerHTML += '<ul class="cl">' + cl.map(function(x){return '<li>' + esc(x) + '</li>'}).join('') + '</ul>';
+        b.innerHTML += '<p class="note" style="margin:8px 0 0">' + esc(dur(v)) + '</p>';
+        var ph = el('div', 'ptabs'); b.appendChild(ph);
+        playerTabs(ph, v);
+        b.appendChild(el('p', 'note', 'Output SHA-256: ' + esc(v.outputSha256)));
+        if(v.review) b.appendChild(el('p', 'note', 'Rubric: ' + esc(v.review.rubric)));
+        b.appendChild(el('p', null, '<a download href="' + esc(v.download) + '">Download this full-quality render</a>'));
+        if((v.sheets||[]).length){
+          b.appendChild(el('h3', null, 'Comparison sheets'));
+          var g = el('div', 'gallery'); b.appendChild(g); gallery(g, v);
+        }
+        d.appendChild(b);
+      });
+      box.appendChild(d);
+    });
+
+    // ---- score table, built from the versions
+    var asc = vers.slice().reverse();
+    var h = '<thead><tr><th>Version</th><th>Critics (model, score)</th><th>Mean</th></tr></thead><tbody>';
+    asc.forEach(function(v){
+      if(!v.scores){ h += '<tr class="pending"><td colspan="3">' + esc(v.label) + ': not judged yet</td></tr>'; return; }
+      h += '<tr><td>' + esc(v.label) + '</td><td>' + v.review.critics.map(function(c){ return esc(c.name) + ' (' + esc(c.model) + '): ' + c.score.toFixed(1); }).join('<br>') + '</td><td class="num">' + mean(v.scores).toFixed(1) + '</td></tr>';
+    });
+    $('scores').innerHTML = h + '</tbody>';
+
+    openFromHash();
+    setupCompare(vers);
+  }).catch(function(e){
+    $('m-msg').innerHTML = '<span class="err">Could not load local gallery data (' + esc(String(e)) + '). Serve this project with npm run demo:serve.</span>';
+  });
+
+  // Keep only one audible player, while preserving the synchronized comparison pair.
+  document.addEventListener('play', function(e){
+    var comparePair = e.target.id === 'cv-a' || e.target.id === 'cv-b';
+    document.querySelectorAll('video').forEach(function(v){
+      if(v === e.target || (comparePair && (v.id === 'cv-a' || v.id === 'cv-b'))) return;
+      v.pause();
+    });
+  }, true);
+
+  // ---- side-by-side compare
+  function setupCompare(vers){
+    var A = $('cv-a'), B = $('cv-b'), sa = $('cmp-a'), sb = $('cmp-b'), play = $('cmp-play'), seek = $('cmp-seek'), tl = $('cmp-time'), au = $('cmp-audio');
+    if(vers.length < 2){ return; }
+    $('cmp').hidden = false;
+    vers.forEach(function(v, i){
+      [sa, sb].forEach(function(s){ var o = el('option'); o.value = i; o.textContent = v.label + (i===0 ? ' (latest)' : '') + (v.scores ? ' · avg ' + mean(v.scores).toFixed(1) : ''); s.appendChild(o); });
+    });
+    sa.value = Math.min(1, vers.length-1) + ''; sb.value = '0';
+    var audioRight = true, ready = 0;
+    function load(vid, v){ vid.pause(); vid.style.aspectRatio = v.width + '/' + v.height; vid.src = vsrc(v, v.video); vid.load(); }
+    function setSrc(){ play.textContent = 'Play'; load(A, vers[+sa.value]); load(B, vers[+sb.value]); seek.value = 0; updAudio(); upd(); }
+    function updAudio(){ A.muted = audioRight; B.muted = !audioRight; au.textContent = 'Audio: ' + (audioRight ? 'right' : 'left'); au.setAttribute('aria-pressed', audioRight ? 'false' : 'true'); }
+    function len(){ return Math.min(A.duration || Infinity, B.duration || Infinity); }
+    function upd(){ var L = len(); if(!isFinite(L)) L = 0; tl.textContent = B.currentTime.toFixed(1) + ' / ' + L.toFixed(1) + ' s'; if(L && !seek.matches(':active')) seek.value = Math.round(B.currentTime / L * 1000); }
+    function go(t){ A.currentTime = t; B.currentTime = t; }
+    sa.onchange = sb.onchange = setSrc;
+    play.onclick = function(){
+      if(A.paused || B.paused){
+        if(B.ended || A.ended || B.currentTime >= len() - .05) go(0);
+        A.play().catch(function(){}); B.play().catch(function(){});
+      } else { A.pause(); B.pause(); }
+    };
+    function sync(){ play.textContent = (A.paused && B.paused) ? 'Play' : 'Pause'; }
+    [A, B].forEach(function(v){ v.addEventListener('play', sync); v.addEventListener('pause', sync); v.addEventListener('ended', function(){ A.pause(); B.pause(); sync(); }); });
+    B.addEventListener('timeupdate', function(){
+      upd();
+      if(!A.paused && Math.abs(A.currentTime - B.currentTime) > .1) A.currentTime = B.currentTime;  // drift correction
+    });
+    seek.oninput = function(){ var L = len(); if(isFinite(L)) go(seek.value/1000 * L); upd(); };
+    au.onclick = function(){ audioRight = !audioRight; updAudio(); };
+    $('cmp-swap').onclick = function(){ var t = sa.value; sa.value = sb.value; sb.value = t; var was = !B.paused, ct = B.currentTime; setSrc(); B.addEventListener('loadedmetadata', function f(){ B.removeEventListener('loadedmetadata', f); go(ct); }); };
+    A.addEventListener('loadedmetadata', upd); B.addEventListener('loadedmetadata', upd);
+    // only fetch video data once the section scrolls into view
+    var started = false;
+    function start(){ if(started) return; started = true; setSrc(); }
+    if('IntersectionObserver' in window){ var io = new IntersectionObserver(function(en){ if(en[0].isIntersecting){ io.disconnect(); start(); } }, {rootMargin:'200px'}); io.observe($('cmp')); } else start();
+    play.addEventListener('click', start);
+  }
+})();
+</script>
+</body>
+</html>

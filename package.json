@@ -1,0 +1,12 @@
+{
+  "name": "demo-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local video rendering, immutable evidence and an extracted version gallery",
+  "type": "module",
+  "bin": { "demo-workbench": "bin/cli.js" },
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test --test-concurrency=1", "check": "node --check bin/cli.js && node --check lib/workbench.js" },
+  "files": ["bin", "lib", "template", "README.md", "NOTICE.md"],
+  "license": "UNLICENSED"
+}
