@@ -16,9 +16,11 @@ ratios, manifest data, pending/empty states, downloads and safe refresh.
 
 No license file was present at the approved source root. Reuse here is under the
 user's explicit local-workbench authorization, not a claim of an open-source
-license or permission to redistribute the original work. This package is private,
-UNLICENSED, and intended for local use. Seek permission/license clarification
-before distributing it. No font binaries are included. The gallery uses local
+license or permission to redistribute the original work. Publication of this
+workbench as `@eclinick/demo-workbench` is separately authorized by the user;
+the package remains UNLICENSED and intended for local use. Public availability
+does not grant an open-source license. Seek permission/license clarification
+before further redistribution. No font binaries are included. The gallery uses local
 system sans and monospace fallbacks; it makes no font-service requests.
 
 The CLI, renderer and media/server implementation are new code. FFmpeg, Git,

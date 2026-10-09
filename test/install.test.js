@@ -17,6 +17,25 @@ function check(result) {
   return result.stdout;
 }
 
+test('scoped public package identity and dependency-free release contract', async () => {
+  assert.equal(packageContract.name, '@eclinick/demo-workbench');
+  assert.notEqual(packageContract.private, true);
+  assert.deepEqual(packageContract.publishConfig, { access: 'public', registry: 'https://registry.npmjs.org/' });
+  assert.deepEqual(packageContract.bin, { 'demo-workbench': 'bin/cli.js' });
+  assert.equal(packageContract.license, 'UNLICENSED');
+  for (const field of ['dependencies', 'optionalDependencies', 'peerDependencies', 'bundledDependencies', 'bundleDependencies']) {
+    assert.equal(Object.keys(packageContract[field] || {}).length, 0, field);
+  }
+  for (const hook of ['preinstall', 'install', 'postinstall', 'prepublish', 'prepublishOnly', 'prepack', 'prepare', 'postpack', 'publish', 'postpublish']) {
+    assert.equal(packageContract.scripts?.[hook], undefined, hook);
+  }
+  const lock = await json(path.join(repo, 'package-lock.json'));
+  for (const pkg of [lock, lock.packages['']]) {
+    assert.equal(pkg.name, packageContract.name);
+    assert.equal(pkg.version, packageContract.version);
+  }
+});
+
 test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall, frozen project', { timeout: 240000 }, async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'demo install ü '));
   t.after(() => fs.rm(root, { recursive: true, force: true, maxRetries: 3 }));
@@ -36,8 +55,14 @@ test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall
   const packed = JSON.parse(check(invoke('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', root], { ...options, cwd: repo })))[0];
   assert.ok(packed.files.some(f => f.path === 'NOTICE.md'));
   assert.ok(packed.files.some(f => f.path === 'lib/diagnostics.js'));
-  assert.ok(packed.files.every(f => !/^(test|node_modules|\.github)\//.test(f.path)));
+  assert.equal(packed.name, '@eclinick/demo-workbench');
+  assert.equal(packed.version, packageContract.version);
+  assert.ok(packed.files.every(f => /^(?:package\.json|README\.md|NOTICE\.md|(?:bin|lib)\/[^/]+\.js|docs\/[^/]+\.md|template\/(?:README\.md|CLAUDE\.md|site\/(?:index\.html|theme\.css|theme\.js)|src\/(?:render|scene)\.js))$/.test(f.path)));
   install(path.join(root, packed.filename));
+  const modules = process.platform === 'win32' ? path.join(prefix, 'node_modules') : path.join(prefix, 'lib/node_modules');
+  const installedPackage = await json(path.join(modules, '@eclinick/demo-workbench/package.json'));
+  assert.equal(installedPackage.name, packageContract.name);
+  assert.equal(installedPackage.version, packageContract.version);
   for (const flag of ['--version', '-v']) assert.equal(installed([flag]).trim(), `${packageContract.name} ${packageContract.version}`);
   assert.match(installed(['--help']), /doctor/);
   const diagnosis = JSON.parse(installed(['doctor', '--json']));
@@ -58,6 +83,8 @@ test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall
   assert.equal(starter.version, packageContract.version);
   assert.equal(runtime.name, packageContract.name);
   assert.equal(runtime.version, packageContract.version);
+  assert.equal(runtime.private, true);
+  assert.equal(starter.galleryCommit, 'f4b701baa1030b08c677f4e6294ff8ecf777e985');
 
   // Install through npm's Git transport from a disposable source, not a folder
   // dependency/link. A distinct version proves the update path really ran.
@@ -93,7 +120,7 @@ test('native npm bin: tarball and Git install, doctor, paths, upgrade, uninstall
     check(invoke('npm', ['install', '--global', '--prefix', prefix, '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', process.env.DEMO_GIT_SOURCE], { ...options, env: remoteEnv }));
     assert.equal(installed(['--version']).trim(), `${packageContract.name} ${packageContract.version}`);
   }
-  npm(['uninstall', '--global', '--prefix', prefix, '--ignore-scripts', 'demo-workbench']);
+  npm(['uninstall', '--global', '--prefix', prefix, '--ignore-scripts', '@eclinick/demo-workbench']);
   await assert.rejects(fs.lstat(path.join(binDir, process.platform === 'win32' ? 'demo-workbench.cmd' : 'demo-workbench')), { code: 'ENOENT' });
   assert.deepEqual(await treeHashes(project, '.workbench'), frozen);
   check(invoke('npm', ['run', 'demo:render', '--', '--note', 'After initializer removal'], { ...options, cwd: project }));

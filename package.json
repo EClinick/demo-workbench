@@ -1,7 +1,7 @@
 {
-  "name": "demo-workbench",
+  "name": "@eclinick/demo-workbench",
   "version": "0.2.0",
-  "private": true,
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
   "description": "Local video rendering, immutable evidence and an extracted version gallery",
   "type": "module",
   "bin": { "demo-workbench": "bin/cli.js" },

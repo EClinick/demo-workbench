@@ -6,16 +6,20 @@ keeps every version numbered, ties each review to the exact output it judged, an
 updates the **same gallery extracted from Love**.
 
 Everything runs on your machine. You can share it privately over your tailnet if
-you ask for that. Nothing gets published to a registry, deployed publicly, or
-handed to a hosted agent service.
+you ask for that. Your demos are never published to a registry, deployed publicly,
+or handed to a hosted agent service by the workbench.
 
 ## Quick start
 
 Install the [prerequisites](docs/installation.md#prerequisites) first. Then
-install once from any directory. You need Git access to the repo for now.
+install once from any directory.
+
+**Upcoming npm release:** the scoped package below is prepared for publication,
+not yet published. Until it is available, use the
+[public Git-source alternative](docs/installation.md#git-source-alternative).
 
 ```sh
-npm install --global --ignore-scripts --omit=dev --no-audit --no-fund 'git+https://github.com/EClinick/demo-workbench.git#main'
+npm install -g @eclinick/demo-workbench
 demo-workbench --version
 demo-workbench doctor
 demo-workbench init ./my-first-demo --duration 2
@@ -27,14 +31,14 @@ npm run demo:serve
 ```
 
 **Windows:** in PowerShell, use `npm.cmd` and `demo-workbench.cmd` (no
-execution-policy change needed). In cmd.exe, put double quotes around the Git URL.
-macOS, Linux, and WSL can run the commands as written.
+execution-policy change needed). cmd.exe, macOS, Linux, and WSL can run the
+commands as written.
 
-`main` moves. To pin the install, swap it for a full commit SHA you've reviewed.
-There's no registry package or release tag. [Installation](docs/installation.md)
-covers prerequisites, PATH and auth problems, Windows examples, updating,
-uninstalling, and offline artifacts. The installer never installs OS tools or
-logs you in to anything.
+The npm package is **`@eclinick/demo-workbench`**; the executable stays
+**`demo-workbench`**. The unscoped npm name belongs to an unrelated project.
+[Installation](docs/installation.md) covers version pinning, prerequisites, PATH
+problems, Windows examples, updating, uninstalling, Git-source and offline
+alternatives. The installer never installs OS tools or logs you in to anything.
 
 To start from a reference video and soundtrack (they're copied, not moved):
 
