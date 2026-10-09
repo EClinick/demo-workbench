@@ -30,7 +30,7 @@ test('actual local install and complete isolated CLI workflow', { timeout: 18000
   const tar = JSON.parse(exec('npm', ['pack', '--json', '--pack-destination', temp], repo).stdout)[0].filename;
   exec('npm', ['install', '--prefix', installer, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', path.join(temp, tar)], temp);
   const installed = path.join(installer, 'node_modules', '.bin', 'demo-workbench');
-  assert.match(exec(installed, ['--help'], installer).stdout, /local only/);
+  assert.match(exec(installed, ['--help'], installer).stdout, /local-first/);
   // Two aspect/rate classes from the source evidence, small synthetic fixtures.
   const refA = path.join(temp, 'four-three.mp4'), refB = path.join(temp, 'wide.mp4'), audio = path.join(temp, 'tone.wav');
   ff(['-f', 'lavfi', '-i', 'testsrc2=size=160x120:rate=24000/1001:duration=0.5', '-c:v', 'libx264', '-threads', '1', '-pix_fmt', 'yuv420p', refA], temp);

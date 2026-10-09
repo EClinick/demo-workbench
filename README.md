@@ -3,7 +3,8 @@
 Create a demo folder and local Git repo once; let agents work on scenes instead of
 rebuilding the review website. A small Node CLI renders MP4s, preserves numbered
 versions and exact-output reviews, and updates the **same extracted Love gallery**.
-Local only: no registry publication, remote creation, agent service or deployment.
+Local-first, with explicit private tailnet sharing: no registry publication,
+remote creation, agent service or public deployment.
 
 ## Quick start
 
@@ -66,6 +67,7 @@ npm run demo:render -- --note "What changed"     # next immutable v001, v002, â€
 npm run demo:compare -- v001                    # verify/locate archived packet
 npm run demo:review -- v001 --file review.json  # explicit one-time review import
 npm run demo:serve -- --port 4173               # loopback, public output only
+npm run demo:serve -- --tailnet --port 4173     # explicit private MagicDNS URL
 npm run demo:archive -- v001 /tmp/v001-bundle    # NEW private evidence bundle
 ```
 
@@ -82,6 +84,43 @@ Run chosen critics in the ordinary Claude session, with a stated budget. There i
 no critic API, scheduler, automatic quality guarantee or automatic agent launch.
 The generated [README](template/README.md) documents configuration, renderer contract,
 review JSON schema, alignment semantics, failure recovery and privacy in detail.
+
+## Private tailnet access
+
+Every generated project inherits `npm run demo:serve -- --tailnet`. Localhost
+remains available and remains the default without that flag. Authenticate/connect
+Tailscale yourself first; the workbench never installs it or logs in for you.
+
+- **Native Tailscale interface:** auto mode binds additional listeners to the exact
+  verified self Tailscale IPs, never `0.0.0.0`/`::` or a LAN interface.
+- **WSL + Windows Tailscale:** auto mode discovers the standard Windows
+  `tailscale.exe` when the Linux CLI is absent and creates one explicit private
+  HTTP Serve mapping to the loopback backend. Windows `curl.exe` first verifies
+  localhost forwarding reaches this exact demo. No netsh, firewall or WSL changes.
+- `--tailnet-mode direct|serve` selects a mode explicitly; `--tailnet-port 19417`
+  optionally differs from the local `--port`. `--tailscale PATH` selects an already
+  installed CLI, including a Windows executable whose path contains spaces.
+
+The command prints `http://<verified-self-MagicDNS-name>:<port>/` **only after a
+same-machine route probe succeeds**. HTTP runs over the encrypted tailnet, not
+public Funnel. Access also depends on your tailnet ACLs and client connectivity;
+a same-machine check is not proof from a second device.
+
+Occupied mappings/backend ports are refused, not replaced. Ctrl-C/SIGTERM closes
+listeners and removes only the exact owned mapping. After a crash, run:
+
+```sh
+npm run demo:serve -- --stop-tailnet
+```
+
+Cleanup verifies node identity and a unique target path against the private
+`.workbench/tailnet.json` record. Changed/replaced routes are left alone with a
+diagnostic. An exclusive temporary per-node/port lease prevents two workbench
+projects from taking the same mapped port. Do not edit Tailscale mappings while a
+serve/stop command runs: the native CLI does not expose a cross-administrator
+atomic reservation. No reset, Funnel, wildcard Host allowlist or global setting
+change is used. See the generated [README](template/README.md#private-tailnet-serving)
+for lifecycle and recovery details.
 
 ## Reused gallery, not a new design
 
@@ -105,13 +144,16 @@ reuse**, not an open-source redistribution grant. See [NOTICE.md](NOTICE.md).
   staging/diagnostics and any partial target; there is no destructive resume mode.
 - One conservative render at a time per project; no queues or parallel frame swarm.
   Rendering does not expose a server or upload anything.
-- Server binds `127.0.0.1`, permits only generated public routes, supports single
-  byte ranges/HEAD/media types, and rejects traversal, symlink escapes and nonlocal
-  Host headers. It does not serve source, .git, raw reference inputs or private runs.
+- Server defaults to `127.0.0.1`; explicit tailnet access uses verified self
+  addresses or a private Serve mapping. Only concrete Host/Origin authorities
+  for those endpoints are accepted; forwarded hosts are never trusted. Generated
+  routes retain Range/HEAD/MIME, traversal and symlink protections. Source, .git,
+  raw reference inputs and private runs are never served.
 - Public metadata includes render notes and imported findings. Keep secrets out of
   these fields. Archive bundles include private source/inputs: do not publish them.
-- No OS installs, Tailscale/Wi-Fi changes, public bind, account integrations or global
-  configuration. Off-device access/deployment is a separately authorized task.
+- No OS installs, Wi-Fi changes, public bind/Funnel, account integrations or global
+  configuration. The explicit tailnet option changes only its owned Serve mapping
+  when that mode is needed. Public deployment remains out of scope.
 - Use trusted local scene/renderer code; a renderer is arbitrary code you run, not
   a sandbox. Do not allow untrusted writers into a project while serving/rendering.
 
@@ -129,14 +171,21 @@ classes (4:3 at 24000/1001 and 16:9 at 60); different source/output FPS; audio m
 new/pending/imported review states; two versions with stable old media and review
 hashes; failed/non-producing render isolation; archive/export; missing dependencies
 and inputs; existing/symlink-target refusal; byte-range seeking, MIME, HEAD,
-loopback binding and privacy. `DEMO_KEEP_TEST_OUTPUT=1 npm test` retains the temp
+loopback binding and privacy. Tailnet tests cover verified identity, direct-address
+selection, generated CLI inheritance, missing/offline tools, mapping/port conflicts,
+exact cleanup and Host/Origin/Range/privacy behavior through a proxy prefix.
+`DEMO_KEEP_TEST_OUTPUT=1 npm test` retains the temp
 fixture directory and prints its path for manual inspection.
 
 Browser verification was attempted using `chrome-devtools-axi` but returned
 `BRIDGE_NOT_READY` (attached CDP target gone). **Visual layout, interactive playback,
 dark mode, and real browser seeking remain unverified**, despite passing HTTP,
 media-probe and script-syntax checks. No browser/shared-service repair was attempted.
-No second-device access was tested or promised; v1 is deliberately loopback-only.
+A generated project was tested through the actual Windows Tailscale Serve route
+from WSL using MagicDNS: local/tailnet HTTP 200, MP4 Range 206, private paths 404,
+untrusted Host/Origin 403, and exact restoration of existing Serve configuration
+on shutdown. **No second-device confirmation** was performed; tailnet client ACLs,
+DNS and connectivity still need checking from the intended device.
 
 Limits: single local process, no crash-resume automation, one review import per
 version, silent comparison clips, manual temporal offsets (not optical alignment),

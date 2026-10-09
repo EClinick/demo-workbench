@@ -14,6 +14,7 @@ npm run demo:render -- --note "First motion study"
 npm run demo:compare -- v001
 npm run demo:serve                      # http://127.0.0.1:4173
 npm run demo:serve -- --port 4180        # optional loopback port
+npm run demo:serve -- --tailnet          # explicit private MagicDNS access
 # After preparing a review, as described below:
 npm run demo:review -- v001 --file review.json
 npm run demo:render -- --note "Revise the transition"  # v002; v001 unchanged
@@ -49,7 +50,8 @@ Media and scratch are ignored, not disposable.
 - `site/`: approved extracted gallery/theme. Agents do not rebuild it per scene.
 - `public/`: only gallery, manifest and explicitly selected media. It contains
   render notes and imported review findings, but not raw source or transcripts.
-- `.workbench/`: vendored CLI plus per-run scratch and an exclusive operation lock.
+- `.workbench/`: vendored CLI, per-run scratch, an exclusive render lock, and an
+  ignored `tailnet.json` ownership record while a private Serve mapping exists.
 
 FPS accepts a rational such as `24000/1001` or `60`; dimensions must be even.
 Reference-driven init uses actual reference dimensions/FPS/duration by default.
@@ -117,6 +119,75 @@ Missing reviews show **not judged yet**. Wrong-version/hash imports fail. One
 review per version is accepted; it cannot be overwritten by rerunning import.
 New outputs never inherit old grades. Only import findings suitable for the gallery.
 
+## Private tailnet serving
+
+Localhost is the default. To deliberately share the same output-only gallery with
+connected tailnet devices:
+
+```sh
+npm run demo:serve -- --tailnet --port 4173
+# Optional different tailnet port, avoiding another service's existing mapping:
+npm run demo:serve -- --tailnet --port 4173 --tailnet-port 19417
+# Choose native private Serve explicitly, or require direct interface binding:
+npm run demo:serve -- --tailnet --tailnet-mode serve
+npm run demo:serve -- --tailnet --tailnet-mode direct
+# Nonstandard installation / explicit Windows Tailscale from WSL:
+npm run demo:serve -- --tailnet --tailscale '/mnt/c/Program Files/Tailscale/tailscale.exe'
+```
+
+Install and authenticate Tailscale yourself; its backend must be running, its self
+node online, and MagicDNS enabled. No login/OS installation happens automatically.
+Auto mode binds exact Tailscale self IPs when they are assigned to this OS, otherwise
+uses supported `tailscale serve --bg --http=PORT TARGET` to forward privately to the
+loopback server. It never invokes Funnel, resets Serve, binds all interfaces or
+opens your LAN/firewall. `--tailnet-mode direct` refuses when no verified local
+Tailscale address exists. Direct mode creates no persistent Tailscale mapping.
+
+On WSL without native Tailscale, the standard Windows Tailscale executable is
+found automatically. This mode needs Windows `curl.exe` at its standard path and
+working WSL localhost forwarding. The tool verifies Windows can reach this exact
+WSL server before creating the mapping. If forwarding is unavailable or a Windows
+service owns that loopback port, it fails without trying to fix networking. No
+Linux Tailscale install or hardcoded WSL IP is required.
+
+A successful start prints a usable `http://<self-name>.<tailnet>.ts.net:PORT/` URL
+and keeps `http://127.0.0.1:LOCAL_PORT/` working. HTTP is protected in transit by
+Tailscale's encrypted network, not browser HTTPS. Only exact verified self DNS/IP
+Host authorities (with their actual ports) and matching Origin values are allowed;
+`X-Forwarded-Host` cannot grant access. Tailnet membership/ACL policy remains your
+Tailscale configuration. The startup probe runs on this machine; test the link,
+seeking and audio on the intended second device before claiming delivery there.
+
+**Ownership and stopping.** Existing mappings (including foreground/service or
+Funnel entries) and occupied ports are refused, never taken over. Serve mappings
+use a unique backend URL prefix and persist exact node/port/target ownership in
+`.workbench/tailnet.json`. Cooperating workbench projects also hold an exclusive
+per-node/port lease file under the OS temporary directory. This is not a daemon.
+Do not delete these records or reuse ports while a mapping is live.
+
+Ctrl-C/SIGTERM removes only the exact owned Serve mapping and closes all listeners.
+After a crash or forced termination, use:
+
+```sh
+npm run demo:serve -- --stop-tailnet
+# Add --tailscale PATH when necessary to select the original client/node.
+```
+
+This removes the mapping, ownership record and matching lease, not other services.
+It does not kill another process; a still-running local server stops with its own
+Ctrl-C. Direct bindings disappear when their process stops, with no mapping to
+clean. Cleanup refuses if the node, target, handlers or Funnel state no longer
+match the record; inspect the diagnostic and existing Tailscale status rather
+than resetting shared configuration. Missing/offline tools leave ownership data
+for a later safe cleanup. A stale route cannot reach a different workbench process
+because each proxy target includes its own instance prefix.
+
+The native Tailscale CLI has no cross-administrator atomic reservation interface.
+The workbench's lease prevents its own cooperating projects racing, but external
+administrators must not change Serve mappings during startup/cleanup. No other
+services' settings are restored from a snapshot or overwritten. Public deployment
+is not supported by these options.
+
 ### Failures, preservation and privacy
 
 Every render uses fresh scratch and one project-wide lock. Nothing updates the
@@ -128,9 +199,9 @@ reported as a complete render. If a process is killed, inspect for running work
 before manually removing `.workbench/operation.lock`; there is no resume daemon.
 Do not edit run/public files to get around integrity failures.
 
-Serving binds **127.0.0.1 only**, supports GET/HEAD and single byte ranges, and only
-allows generated gallery/media routes. No directory listing, source, .git, reference
-originals, raw packets, archives, symlinks or traversal. It makes no network changes.
-Do not expose this local unauthenticated server publicly. Tailnet/Wi-Fi/deployment
-requires separate approval and real device verification. No off-device access is
-promised. See NOTICE.md for extraction provenance and local-use licensing limits.
+Serving defaults to **127.0.0.1**, with deliberate private tailnet access as described
+above. Both modes support GET/HEAD and single byte ranges, and only allow generated
+gallery/media routes. No directory listing, source, .git, reference originals, raw
+packets, archives, symlinks or traversal. Do not expose the unauthenticated backend
+publicly. Wi-Fi/public deployment and unrelated network changes are not included.
+See NOTICE.md for extraction provenance and local-use licensing limits.
