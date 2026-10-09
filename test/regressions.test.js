@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { run, json, hash } from '../lib/common.js';
@@ -10,7 +11,7 @@ import { serve } from '../lib/serve.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 async function fixture(t) {
-  const temp = await fs.mkdtemp(path.join(repo, '.regression-test-'));
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'demo-workbench-regression-'));
   t.after(() => fs.rm(temp, { recursive: true, force: true }));
   const project = path.join(temp, 'demo');
   run(process.execPath, [path.join(repo, 'bin/cli.js'), 'init', project, '--width', '96', '--height', '128', '--fps', '24', '--duration', '0.25']);
@@ -64,8 +65,9 @@ test('fresh generated checkout restores render and serve outputs without exposin
   } finally { await server.closeWorkbench(); }
   for (const rel of ['assets', 'runs', 'public', 'public/index.html', 'public/theme.css', 'public/theme.js', 'public/data.json']) {
     const original = path.join(serving, rel), moved = path.join(temp, 'preserved');
+    const type = (await fs.stat(original)).isDirectory() ? 'dir' : 'file';
     await fs.rename(original, moved);
-    await fs.symlink(moved, original);
+    await fs.symlink(moved, original, type);
     await assert.rejects(prepareProject(serving), /Symlink refused/);
     await fs.unlink(original);
     await fs.rename(moved, original);

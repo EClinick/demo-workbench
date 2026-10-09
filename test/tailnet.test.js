@@ -294,6 +294,19 @@ test('output server accepts concrete tailnet Host/Origin only and preserves priv
   await assert.rejects(verifyEndpoint(`http://127.0.0.1:${port}/`, randomUUID(), { windowsFromWSL: false }), /did not return this demo/);
 });
 
+test('real WSL Windows curl bridge verifies only this loopback instance, without a Serve mutation', { skip: process.platform !== 'linux' || !/microsoft/i.test(os.release()) }, async t => {
+  const { root } = await fixture(t);
+  const token = randomUUID();
+  const policy = { hosts: new Set(), origins: new Set(), token };
+  const server = await createOutputServer(root, policy);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  policy.hosts.add(`127.0.0.1:${server.address().port}`);
+  await verifyEndpoint(url, token, { windowsFromWSL: true });
+  await assert.rejects(verifyEndpoint(url, randomUUID(), { windowsFromWSL: true }), /belongs to another service/);
+});
+
 test('generated CLI inherits explicit tailnet options; failures never mutate network config', { timeout: 30000 }, async t => {
   const { root, command, stateFile } = await fixture(t);
   const project = path.join(root, 'generated');

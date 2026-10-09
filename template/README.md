@@ -5,6 +5,17 @@ output, inspect the same reusable gallery. No dependency on the initializer's
 installation path and no npm runtime dependencies. Requires Node >=18, npm, Git,
 FFmpeg/ffprobe with libx264, AAC and drawtext. Nothing installs OS packages.
 `npm ci --offline --ignore-scripts` validates the supplied zero-dependency lockfile.
+Use the commands below on macOS, Linux, WSL or native Windows; in PowerShell,
+`npm.cmd` avoids execution-policy restrictions on npm's `.ps1` shim. No policy
+or PATH edits are made automatically. WSL uses Linux Node/npm and FFmpeg, not
+Windows npm in a Linux PATH.
+
+The initializer may be upgraded or uninstalled without changing this project's
+frozen runtime. `demo.json` records the generator version; `.workbench/package.json`
+records this runtime's version. Run `node .workbench/bin/cli.js --version` or
+`node .workbench/bin/cli.js doctor --json` for local diagnostics. Add `--tailnet`
+only to check existing Tailscale readiness; doctor never creates a route. Do not
+replace project-local scripts with a newer global CLI when reproducing evidence.
 
 ## Everyday commands
 
@@ -18,7 +29,7 @@ npm run demo:serve -- --tailnet          # explicit private MagicDNS access
 # After preparing a review, as described below:
 npm run demo:review -- v001 --file review.json
 npm run demo:render -- --note "Revise the transition"  # v002; v001 unchanged
-npm run demo:archive -- v001 /tmp/my-demo-v001-bundle # NEW external folder
+npm run demo:archive -- v001 ../my-demo-v001-bundle # NEW external folder
 ```
 
 `render` assigns the next number; optional `--version v001` asserts that number,

@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import http from 'node:http';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { invoke, installedBin, withPath } from './helpers/process.js';
 import { fileURLToPath } from 'node:url';
 import { hash, json } from '../lib/common.js';
 import { serve } from '../lib/serve.js';
@@ -14,7 +14,7 @@ import { assertGalleryPrivacy } from './helpers/gallery.js';
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(repo, 'bin/cli.js');
 function exec(cmd, args, cwd, ok = true, env = process.env) {
-  const r = spawnSync(cmd, args, { cwd, env, encoding: 'utf8', timeout: 90000 });
+  const r = path.basename(cmd) === 'demo-workbench' ? installedBin(cmd, args, { cwd, env }) : invoke(cmd, args, { cwd, env });
   if (ok) assert.equal(r.status, 0, `${cmd} ${args.join(' ')}\n${r.stdout}\n${r.stderr}\n${r.error || ''}`);
   else assert.notEqual(r.status, 0, 'command should refuse');
   return r;
@@ -132,12 +132,12 @@ test('actual local install and complete isolated CLI workflow', { timeout: 18000
   call(['init', missing, '--reference', path.join(temp, 'absent.mp4')], temp, false);
   await assert.rejects(fs.lstat(missing), { code: 'ENOENT' });
   call(['init', a], temp, false);
-  const link = path.join(temp, 'target-link'); await fs.symlink(a, link);
+  const link = path.join(temp, 'target-link'); await fs.symlink(a, link, 'dir');
   call(['init', link], temp, false); assert.equal((await fs.lstat(link)).isSymbolicLink(), true);
-  const broken = path.join(temp, 'dangling'); await fs.symlink('/nonexistent/demo-workbench', broken);
+  const broken = path.join(temp, 'dangling'); await fs.symlink(path.join(temp, 'nonexistent-demo'), broken, 'dir');
   call(['init', broken], temp, false);
   const noTools = path.join(temp, 'no-tools'); await fs.mkdir(noTools);
-  assert.match(call(['init', missing], temp, false, { ...process.env, PATH: noTools }).stderr, /dependency git/);
+  assert.match(call(['init', missing], temp, false, withPath(noTools)).stderr, /dependency git/);
   await assert.rejects(fs.lstat(missing), { code: 'ENOENT' });
   // Symlink input within a generated project must never be followed by render.
   const configB = await fs.readFile(path.join(b, 'demo.json'), 'utf8');
@@ -181,7 +181,7 @@ test('actual local install and complete isolated CLI workflow', { timeout: 18000
   await fs.mkdir(path.join(media, 'v999'));
   await fs.symlink(path.join(a, 'demo.json'), path.join(media, 'v999/web.mp4'));
   assert.equal((await fetch(origin + '/media/v999/web.mp4')).status, 404);
-  await fs.symlink(path.join(a, 'runs/v001'), path.join(media, 'v998'));
+  await fs.symlink(path.join(a, 'runs/v001'), path.join(media, 'v998'), 'dir');
   assert.equal((await fetch(origin + '/media/v998/render.mp4')).status, 404);
   assert.match((await fetch(origin + '/theme.css')).headers.get('content-type'), /text\/css/);
   assert.equal((await fetch(origin + '/media/v001/packet/pair-001.png')).headers.get('content-type'), 'image/png');
