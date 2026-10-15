@@ -233,6 +233,7 @@ Serve config was restored exactly on shutdown. It was **not tested from a second
 device**, so check ACLs, DNS, and connectivity from the device you plan to use.
 
 **Limits:** one local process, no automatic crash recovery, one review import per
-version, silent comparison clips, manual time offsets (no optical alignment), and a
-simple CPU starter scene rather than a fast 4K animation framework. Nothing from a
+version, candidate-soundtrack comparison clips (silent without supplied audio),
+manual time offsets (no optical alignment), and a simple CPU starter scene rather
+than a fast 4K animation framework. Nothing from a
 source project or private reference files is needed at runtime or in tests.

@@ -79,9 +79,19 @@ The gallery needs no edits for 4:3, 16:9, portrait, or FPS changes. The RGB star
 is deliberately simple, single-threaded and not optimized for long 4K renders.
 Web previews cap width at 960; full-quality render downloads remain available.
 Comparisons default to 480 pixels per panel, preserve proportions with padding,
-and are silent, explicitly labelled Reference/Candidate. Only candidate render
-playback uses the supplied audio (reference audio is not implicitly adopted).
-Audio is padded/trimmed to the configured duration. Without --audio, renders are silent.
+and are explicitly labelled Reference/Candidate. Side-by-side playback and its
+MP4 download embed the accepted candidate render's soundtrack, trimmed by
+`comparison.candidateStart` and bounded to the comparison duration. Reference
+audio is never mixed in or implicitly adopted. The gallery's default Side-by-side
+player is unmuted; press Play to hear it (no autoplay).
+Audio is padded/trimmed to the configured render duration. Without --audio,
+renders and comparisons remain silent, even if the reference has audio.
+
+`compare VERSION` verifies and republishes the exact archived comparison, including
+its audio; it does not regenerate or replace hash-bound media. Old silent archives
+stay silent, and existing projects keep their frozen runtime. This behavior applies
+to new renders in projects initialized with the updated workbench, not an automatic
+migration of historical runs, reviews, or existing projects.
 
 ### Renderer-to-MP4 contract
 
