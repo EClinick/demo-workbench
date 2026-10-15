@@ -34,9 +34,23 @@ npm run demo:render -- --note "First version"
 npm run demo:serve
 ```
 
-Open <http://127.0.0.1:4173>; Ctrl-C stops the server. To start with inputs, add
-`--reference /path/to/reference.mp4 --audio /path/to/soundtrack.mp3` to `init`.
-Inputs are copied, not moved. The destination must not already exist.
+Open the URL printed by `serve`; `http://127.0.0.1:4173` is the default, not a
+required port. Choose another available port or enable private tailnet viewing:
+
+```sh
+npm run demo:serve -- --port 4180
+# Alternatively, with Tailscale installed, signed in and MagicDNS enabled:
+npm run demo:serve -- --tailnet --port 4180
+```
+
+For tailnet viewing, open the printed **Tailnet gallery** URL on a connected device
+permitted by your Tailscale ACLs. Keep the server running while viewing; Ctrl-C
+stops it. This does not expose a public or LAN site. See
+[tailnet setup and cleanup](template/README.md#private-tailnet-serving).
+
+To start with inputs, add `--reference /path/to/reference.mp4` and
+`--audio /path/to/soundtrack.mp3` to `init`. Inputs are copied, not moved.
+The destination must not already exist.
 
 Use the project's `npm run demo:*` scripts for subsequent work. Generated projects
 keep a frozen runtime: updating or uninstalling the global CLI does not change
