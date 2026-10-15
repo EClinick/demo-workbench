@@ -4,13 +4,9 @@ The CLI uses npm's ordinary `bin` mechanism. There is no bootstrap service,
 postinstall hook, OS installer, runtime npm dependency, or automatic authentication.
 [package.json](../package.json) owns the package version;
 `demo-workbench --version` (or `-v`) reports what is actually installed.
-The repository is public. The npm package is **`@eclinick/demo-workbench`**;
+The repository and npm package are public. Install **`@eclinick/demo-workbench`**;
 the executable remains **`demo-workbench`**. The unscoped npm name belongs to
 an unrelated project, not this CLI.
-
-**Publication pending:** these registry instructions describe the upcoming first
-scoped release, `0.2.0`, not an already available package. Until publication is
-confirmed, use the [Git-source alternative](#git-source-alternative).
 
 ## Prerequisites
 
@@ -37,7 +33,7 @@ confirmed, use the [Git-source alternative](#git-source-alternative).
 
 ## Install once
 
-After publication, one command from any directory; no source checkout or npm
+Install from npm with one command from any directory; no source checkout or npm
 login is needed. The package has no install hooks or runtime dependencies.
 To pin the first release, append `@0.2.0` to the scoped package name.
 
@@ -63,7 +59,7 @@ execution policy to use this tool. **Native cmd.exe:** use the same commands;
 
 ### Git-source alternative
 
-The public repository can also be installed without waiting for npm publication:
+Alternatively, install directly from the public Git repository:
 
 ```sh
 npm install --global --ignore-scripts --omit=dev --no-audit --no-fund 'git+https://github.com/EClinick/demo-workbench.git#main'
@@ -171,7 +167,7 @@ access depends on your existing ACLs/client connectivity and needs its own test.
 
 ## Update and uninstall
 
-After publication, update to the latest scoped release or uninstall with:
+Update to the latest scoped release or uninstall with:
 
 ```sh
 npm install -g @eclinick/demo-workbench@latest

@@ -12,11 +12,7 @@ or handed to a hosted agent service by the workbench.
 ## Quick start
 
 Install the [prerequisites](docs/installation.md#prerequisites) first. Then
-install once from any directory.
-
-**Upcoming npm release:** the scoped package below is prepared for publication,
-not yet published. Until it is available, use the
-[public Git-source alternative](docs/installation.md#git-source-alternative).
+install once from any directory using the public npm package:
 
 ```sh
 npm install -g @eclinick/demo-workbench
